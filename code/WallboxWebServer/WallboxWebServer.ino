@@ -39,13 +39,14 @@
 #define STAPSK  "51379055442083999816"
 #endif
 #define LED 2           //Pin 2 für LED
-#define kHzOut 14       //Pin 2 für LED
+#define kHzOut 14       //Pin 14 für LED
 #define RelaisLinks 0   //Pin 0 für Relais Links
 #define RelaisRechts 4  //Pin 4 für Relais Links
 
 const char *ssid = STASSID;
 const char *password = STAPSK;
 Ticker blinker;
+//int startMikros;
 
 ESP8266WebServer server(80);
 
@@ -143,6 +144,8 @@ void setup(void) {
   pinMode(LED, OUTPUT);
   digitalWrite(LED, HIGH);
   //Serial.begin(115200);
+
+  //startMikros = micros();
   
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
@@ -162,10 +165,10 @@ void setup(void) {
   //Serial.println(WiFi.localIP());
 
   //=== erstmal ein Blinken von 0.5 Sekunden ============================
-  //blinker.attach(0.5, changeState); 
+  blinker.attach(0.001, changeState); 
 
   //=== hier ein Blinken von 0.5 Millisekunden = 1kHz ===================
-  blinker.attach_ms(1, changeState); 
+  //blinker.attach_ms(1, changeState); 
   
   if (MDNS.begin("esp8266")) {
     //Serial.println("MDNS responder started");
@@ -299,5 +302,8 @@ String getSchalttext (String text){
 
 void loop(void) {
   server.handleClient();
+  /*if (0 == ((startMikros - micros()) % 500)) {
+     changeState();
+  }*/
   MDNS.update();
 }
