@@ -1,21 +1,28 @@
 #include "webserver.h"
 
+// Simple map function (like Arduino's)
+static int map_value(int x, int in_min, int in_max, int out_min, int out_max) {
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
 WebServer server(80);
 
+// Generates the HTML page for the web interface
 String htmlPage(int amps, ModeState mode) {
-  String modeStr = (mode == ModeState::AUTO ? "Auto" : (mode == ModeState::MAX ? "Maximal" : "Überschuss"));
-  return "<html><body><h1>Wallbox Steuerung</h1>"
-         "<p>Aktueller Strom: " + String(amps) + " A</p>"
-         "<p>Modus: " + modeStr + "</p>"
-         "<form action='/set?mode=max' method='POST'><button>Maximal laden</button></form>"
-         "<form action='/set?mode=excess' method='POST'><button>Überschussladen</button></form>"
-         "<form action='/set?mode=auto' method='POST'><button>Automatik</button></form>"
+  String modeStr = (mode == ModeState::AUTO ? "Auto" : (mode == ModeState::MAX ? "Maximal" : "Excess"));
+  return "<html><body><h1>Wallbox Control</h1>"
+         "<p>Current: " + String(amps) + " A</p>"
+         "<p>Mode: " + modeStr + "</p>"
+         "<form action='/set?mode=max' method='POST'><button>Max charge</button></form>"
+         "<form action='/set?mode=excess' method='POST'><button>Excess charge</button></form>"
+         "<form action='/set?mode=auto' method='POST'><button>Automatic</button></form>"
          "</body></html>";
 }
 
+// Sets up the web server and routes
 void setupWebServer(DS3502 &poti, ModeState* mode) {
   server.on("/", HTTP_GET, [&]() {
-    int amps = map(poti.getCurrentSetting(), 127, 0, 8, 64);
+    int amps = map_value(poti.getCurrentSetting(), 127, 0, 8, 64);
     server.send(200, "text/html", htmlPage(amps, *mode));
   });
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include "esphome/core/component.h"
 #include "esphome/components/i2c/i2c.h"
 #include "esphome/components/number/number.h"
@@ -13,12 +14,12 @@ class DS3502Potentiometer : public number::Number, public i2c::I2CDevice {
 
   void setup() override;
   void dump_config() override;
-  void control(float value) override; // Methode zum Setzen des Werts vom ESPHome Framework
+  void control(float value) override; // Setzt den Wert über ESPHome
 
  protected:
-  // Hilfsfunktion zur Umwandlung von Ampere in Wiper-Wert
-  byte ampsToWiper(int amps);
-  void setWiper(byte value);
+  // Wandelt Ampere in Wiper-Wert um
+  uint8_t ampsToWiper(int amps);
+  void setWiper(uint8_t value);
   int getCurrentWiperSetting();
 };
 

@@ -6,8 +6,8 @@ esphome:
 
 # WLAN-Konfiguration
 wifi:
-  ssid: "DEIN_WIFI"
-  password: "DEIN_PASS"
+  ssid: "JUNGLE_TIEF"
+  password: "51379055442083999816"
   # Optional: Feste IP-Adresse
   # manual_ip:
   #   static_ip: 192.168.1.XXX
@@ -121,14 +121,13 @@ on_loop:
             id(wallbox_mode) = 0; # Setze Modus zurück auf AUTO
             ESP_LOGD("main", "Maximalmodus-Timeout, zurück zu Automatik.");
             id(current_amps_setting).publish_state(12); # Setze auf 12A
-        # Hier könntest du auch eine Notification senden oder den Status aktualisieren
 
 # Automatisierung für PV-Abhängigkeit (läuft alle 5 Sekunden, wie im Original)
 time:
   - platform: sntp
     id: sntp_time
     on_time:
-      - seconds: /5 # Alle 5 Sekunden
+      - seconds: /5
         then:
           - if:
               condition:

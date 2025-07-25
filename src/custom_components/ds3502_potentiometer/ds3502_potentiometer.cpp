@@ -1,25 +1,32 @@
 #include "ds3502_potentiometer.h"
 #include "esphome/core/log.h"
 #include "esphome/core/helpers.h"
+#include <cmath>
+#include <algorithm>
 
 namespace esphome {
 namespace ds3502_potentiometer {
 
 static const char *const TAG = "ds3502_potentiometer";
 
+// Simple map function (like Arduino's)
+static int map_value(int x, int in_min, int in_max, int out_min, int out_max) {
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
 void DS3502Potentiometer::setup() {
   ESP_LOGCONFIG(TAG, "Setting up DS3502 Potentiometer...");
-  // Der I2C-Bus sollte bereits von ESPHome initialisiert werden
-  // Stelle sicher, dass die I2C-Kommunikation funktioniert
+  // The I2C bus should already be initialized by ESPHome
+  // Ensure I2C communication works
   if (!this->is_ready()) {
     ESP_LOGE(TAG, "I2C Device not ready. Check wiring and address.");
     this->mark_failed();
     return;
   }
-  // Optional: Initialen Wert setzen oder auslesen
+  // Optionally: Set or read initial value
   int current_wiper = this->getCurrentWiperSetting();
-  int current_amps = map(current_wiper, 127, 0, 8, 64);
-  this->publish_state(current_amps); // Veröffentliche den aktuellen Ampere-Wert
+  int current_amps = map_value(current_wiper, 127, 0, 8, 64);
+  this->publish_state(current_amps); // Publish current ampere value
 }
 
 void DS3502Potentiometer::dump_config() {
@@ -28,18 +35,18 @@ void DS3502Potentiometer::dump_config() {
 }
 
 void DS3502Potentiometer::control(float value) {
-  int amps = static_cast<int>(roundf(value));
-  byte wiper_value = ampsToWiper(amps);
+  int amps = static_cast<int>(std::round(value));
+  uint8_t wiper_value = ampsToWiper(amps);
   this->setWiper(wiper_value);
-  this->publish_state(amps); // Aktualisiere den Zustand der Number-Komponente
+  this->publish_state(amps); // Update the state of the Number component
   ESP_LOGD(TAG, "Set DS3502 wiper to %d for %d Amps", wiper_value, amps);
 }
 
-void DS3502Potentiometer::setWiper(byte value) {
+void DS3502Potentiometer::setWiper(uint8_t value) {
   this->write_register(0x00, &value, 1);
 }
 
-byte DS3502Potentiometer::ampsToWiper(int amps) {
+uint8_t DS3502Potentiometer::ampsToWiper(int amps) {
   switch (amps) {
     case 64: return 0;
     case 50: return 20;
@@ -48,7 +55,7 @@ byte DS3502Potentiometer::ampsToWiper(int amps) {
     case 16: return 80;
     case 12: return 100;
     case 8:  return 127;
-    default: return 127; // Standardwert für unbekannte Ampere-Werte
+    default: return 127; // Default for unknown ampere values
   }
 }
 
@@ -57,7 +64,7 @@ int DS3502Potentiometer::getCurrentWiperSetting() {
   if (this->read_register(0x00, &value, 1)) {
     return value;
   }
-  return -1; // Fehler beim Lesen
+  return -1; // Error reading
 }
 
 }  // namespace ds3502_potentiometer
