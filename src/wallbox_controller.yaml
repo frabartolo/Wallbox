@@ -1,0 +1,153 @@
+# Definieren des ESP32 Boards
+esphome:
+  name: esp32_wallbox_controller
+  platform: ESP32
+  board: esp32dev # Oder dein spezifisches ESP32-Board
+
+# WLAN-Konfiguration
+wifi:
+  ssid: "DEIN_WIFI"
+  password: "DEIN_PASS"
+  # Optional: Feste IP-Adresse
+  # manual_ip:
+  #   static_ip: 192.168.1.XXX
+  #   gateway: 192.168.1.1
+  #   subnet: 255.255.255.0
+
+# Aktiviere das Web-Interface (Dashboard)
+api:
+  password: "DEIN_API_PASSWORT" # Optional, aber empfohlen für Sicherheit
+
+web_server:
+  port: 80
+
+# I2C Bus für den DS3502
+i2c:
+  sda: GPIO21 # Prüfe deine tatsächlichen SDA-Pins
+  scl: GPIO22 # Prüfe deine tatsächlichen SCL-Pins
+  frequency: 100kHz
+  id: my_i2c_bus
+
+# Log-Ausgabe über die serielle Schnittstelle
+logger:
+  level: DEBUG # Oder INFO für weniger detaillierte Logs
+
+# OTA Updates
+ota:
+
+# Custom Component für den DS3502
+# Dies muss in einer separaten ds3502_component.h/.cpp Datei implementiert werden
+external_components:
+  - source:
+      type: local
+      path: custom_components/ds3502_potentiometer # Verzeichnis für deine Custom Component
+    components:
+      - ds3502_potentiometer
+
+# Hilfsvariablen (für den Modus und Override-Timer)
+globals:
+  - id: wallbox_mode
+    type: int
+    initial_value: '0' # 0: AUTO, 1: MAX, 2: EXCESS
+  - id: override_start_time
+    type: int
+    initial_value: '0'
+
+# Sensoren, Aktoren und Automatisierungen
+
+# Number-Komponente, um den Strom direkt über das Web-Interface zu steuern
+# Dies würde den Wert des Potentiometers direkt setzen.
+# Die Logik ampsToWiper muss dann in der Custom Component liegen oder hier gespiegelt werden.
+number:
+  - platform: ds3502_potentiometer
+    name: "Ladeleistung in Ampere"
+    id: current_amps_setting
+    min_value: 8
+    max_value: 64
+    step: 4 # Oder kleinere Schritte, je nachdem, welche Ampere-Werte du unterstützen willst
+    unit_of_measurement: "A"
+    i2c_id: my_i2c_bus # Verweis auf den I2C-Bus
+    address: 0x28
+
+# Buttons für die Modusauswahl im Web-Interface
+button:
+  - platform: custom
+    name: "Modus: Automatik"
+    on_press:
+      lambda: |-
+        id(wallbox_mode) = 0; # Setze Modus auf AUTO
+        ESP_LOGD("main", "Modus auf Automatik gesetzt.");
+
+  - platform: custom
+    name: "Modus: Maximal laden"
+    on_press:
+      lambda: |-
+        id(wallbox_mode) = 1; # Setze Modus auf MAX
+        id(override_start_time) = millis(); # Speichere Startzeit für Timeout
+        id(current_amps_setting).publish_state(32); # Setze auf 32A im Maximalmodus
+        ESP_LOGD("main", "Modus auf Maximal gesetzt, 32A.");
+
+  - platform: custom
+    name: "Modus: Überschussladen"
+    on_press:
+      lambda: |-
+        id(wallbox_mode) = 2; # Setze Modus auf EXCESS
+        id(current_amps_setting).publish_state(12); # Setze auf 12A im Überschussmodus
+        ESP_LOGD("main", "Modus auf Überschuss gesetzt, 12A.");
+
+# Automatisierung für PV-Abhängigkeit (mocked)
+# Du würdest hier einen echten Sensor für pvPower verwenden
+# Für den Mock: Ein Template-Sensor oder manueller Eingabewert
+sensor:
+  - platform: template
+    name: "Mocked PV Power"
+    id: mocked_pv_power
+    unit_of_measurement: "W"
+    # Hier kannst du einen festen Wert setzen oder ihn später per API aktualisieren
+    # state_class: measurement
+    # accuracy_decimals: 0
+    # update_interval: 5s # Aktualisierungsintervall für den Sensor
+
+# Periodische Überprüfung und Logik (entspricht dem loop() Teil)
+on_loop:
+  # Maximal-Modus Timeout (1 Stunde)
+  - if:
+      condition:
+        and:
+          - lambda: 'return id(wallbox_mode) == 1;' # Wenn Modus MAX ist
+          - lambda: 'return (millis() - id(override_start_time)) > 3600000;' # Und 1 Stunde vergangen ist
+      then:
+        - lambda: |-
+            id(wallbox_mode) = 0; # Setze Modus zurück auf AUTO
+            ESP_LOGD("main", "Maximalmodus-Timeout, zurück zu Automatik.");
+            id(current_amps_setting).publish_state(12); # Setze auf 12A
+        # Hier könntest du auch eine Notification senden oder den Status aktualisieren
+
+# Automatisierung für PV-Abhängigkeit (läuft alle 5 Sekunden, wie im Original)
+time:
+  - platform: sntp
+    id: sntp_time
+    on_time:
+      - seconds: /5 # Alle 5 Sekunden
+        then:
+          - if:
+              condition:
+                lambda: 'return id(wallbox_mode) == 0;' # Wenn Modus AUTO ist
+              then:
+                - if:
+                    # Hier müsstest du den tatsächlichen PV-Sensorwert abfragen
+                    # Für den Mock:
+                    condition:
+                      lambda: 'return id(mocked_pv_power).state < 300;' # Wenn PV-Leistung < 300W [cite: 6]
+                    then:
+                      - lambda: 'id(current_amps_setting).publish_state(32);' # Setze auf 32A [cite: 6]
+                      - logger.log: "DEBUG"
+                        format: "PV-Leistung unter 300W, setze auf 32A."
+                    else:
+                      - lambda: 'id(current_amps_setting).publish_state(12);' # Setze auf 12A [cite: 7]
+                      - logger.log: "DEBUG"
+                        format: "PV-Leistung über 300W, setze auf 12A."
+          - else:
+              # Wenn nicht im AUTO-Modus, keine Anpassung der Ampere durch PV-Logik
+              logger.log: "DEBUG"
+              format: "Nicht im AUTO-Modus, PV-Logik inaktiv."
