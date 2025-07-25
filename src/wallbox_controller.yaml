@@ -1,13 +1,23 @@
 # Definieren des ESP32 Boards
 esphome:
-  name: esp32_wallbox_controller
-  platform: ESP32
-  board: esp32dev # Oder dein spezifisches ESP32-Board
+  name: wallbox
+  friendly_name: Wallbox
+  libraries:
+    - "Arduino"
+    - "Wire"
+    - "SPI"
+    - "Adafruit BusIO"
+    - "Adafruit DS3502"
+  includes:
+    - DS3502.h
 
 # WLAN-Konfiguration
 wifi:
-  ssid: "JUNGLE_TIEF"
-  password: "51379055442083999816"
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "Wallbox Fallback Hotspot"
+    password: "PRjHPY18z5MC"
   # Optional: Feste IP-Adresse
   # manual_ip:
   #   static_ip: 192.168.1.XXX
@@ -16,7 +26,7 @@ wifi:
 
 # Aktiviere das Web-Interface (Dashboard)
 api:
-  password: "DEIN_API_PASSWORT" # Optional, aber empfohlen für Sicherheit
+  password: "kAnmZjHuXtWkVaz1ctOAThgK+BUfLDeN7vBPCyhiMKA=" # Optional, aber empfohlen für Sicherheit
 
 web_server:
   port: 80
@@ -34,6 +44,8 @@ logger:
 
 # OTA Updates
 ota:
+  - platform: esphome
+    password: "2db4bb5b7fffc371c432344fb6881f73"
 
 # Custom Component für den DS3502
 # Dies muss in einer separaten ds3502_component.h/.cpp Datei implementiert werden
