@@ -1,27 +1,28 @@
-#pragma once
+#include "esphome.h"
 
-#include <cstdint>
-#include "esphome/core/component.h"
-#include "esphome/components/i2c/i2c.h"
-#include "esphome/components/number/number.h"
-
-namespace esphome {
-namespace ds3502_potentiometer {
-
-class DS3502Potentiometer : public number::Number, public i2c::I2CDevice {
+class DS3502Potentiometer : public Component, public Number {
  public:
-  DS3502Potentiometer() : number::Number() {}
+  void setup() override {
+    Wire.begin();
+  }
 
-  void setup() override;
-  void dump_config() override;
-  void control(float value) override; // Setzt den Wert über ESPHome
+  void control(float value) override {
+    int wiper = amps_to_wiper((int)value);
+    Wire.beginTransmission(0x28);
+    Wire.write(0x00);  // Wiper register
+    Wire.write(wiper);
+    Wire.endTransmission();
+    this->publish_state(value);
+  }
 
  protected:
-  // Wandelt Ampere in Wiper-Wert um
-  uint8_t ampsToWiper(int amps);
-  void setWiper(uint8_t value);
-  int getCurrentWiperSetting();
+  int amps_to_wiper(int amps) {
+    if (amps >= 64) return 0;
+    if (amps >= 50) return 20;
+    if (amps >= 32) return 40;
+    if (amps >= 24) return 60;
+    if (amps >= 16) return 80;
+    if (amps >= 12) return 100;
+    return 127; // niedrigster Strom
+  }
 };
-
-}  // namespace ds3502_potentiometer
-}  // namespace esphome
