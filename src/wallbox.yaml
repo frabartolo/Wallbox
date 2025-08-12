@@ -1,0 +1,151 @@
+esphome:
+  name: wallbox
+  friendly_name: Wallbox
+  includes:
+    # Verweis auf deine Header-Datei, die die Custom-Component enthält
+    - custom_components/ds3502_potentiometer/ds3502_potentiometer.h
+  libraries:
+    - "Arduino"
+    - "Wire"
+    - "SPI"
+    - "Adafruit BusIO"
+    - "Adafruit DS3502"
+  # Wir brauchen die on_boot-Sektion nicht mehr, da die setup()-Methode in deiner Custom-Component verwendet wird.
+
+esp8266:
+  board: d1_mini_lite
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "Wallbox Fallback Hotspot"
+    password: "PRjHPY18z5MC"
+
+logger:
+  level: DEBUG
+
+ota:
+  platform: esphome
+  password: "2db4bb5b7fffc371c432344fb6881f73"
+
+api:
+  password: "kAnmZjHuXtWkVaz1ctOAThgK+BUfLDeN7vBPCyhiMKA="
+
+web_server:
+  port: 80
+
+# MQTT Anbindung (manuelle Konfiguration ohne Discovery)
+mqtt:
+  broker: cold-lairs.fritz.box
+  discovery: false
+  topic_prefix: wallbox
+  on_message:
+    topic: wallbox/cmd
+    then:
+      - lambda: |-
+          std::string payload_str = std::string(x.payload.begin(), x.payload.end());
+          if (payload_str.find("max") != std::string::npos) {
+            id(wallbox_mode) = 1;
+            id(current_amps_setting) = 32;
+            id(Ladeleistung).publish_state(32);
+            ESP_LOGD("mqtt", "Modus MAX gesetzt via MQTT.");
+          } else if (payload_str.find("excess") != std::string::npos) {
+            id(wallbox_mode) = 2;
+            id(current_amps_setting) = 12;
+            id(Ladeleistung).publish_state(12);
+            ESP_LOGD("mqtt", "Modus EXCESS gesetzt via MQTT.");
+          } else {
+            id(wallbox_mode) = 0;
+            id(current_amps_setting) = 12;
+            id(Ladeleistung).publish_state(12);
+            ESP_LOGD("mqtt", "Modus AUTO gesetzt via MQTT.");
+          }
+
+i2c:
+  id: bus_a
+  sda: D1 #grau
+  scl: D2 #weiß
+  scan: true
+
+globals:
+  # Instanz der Klasse DS3502Potentiometer erstellen
+  - id: my_potentiometer
+    type: DS3502Potentiometer
+    initial_value: 'DS3502Potentiometer()'
+  - id: current_amps_setting
+    type: int
+    initial_value: '12'
+  - id: wallbox_mode
+    type: int
+    initial_value: '0'  # 0: AUTO, 1: MAX, 2: EXCESS
+  - id: override_start_time
+    type: int
+    initial_value: '0'
+
+number:
+  - platform: template
+    name: "Ladeleistung in Ampere"
+    id: Ladeleistung
+    min_value: 8
+    max_value: 64
+    step: 4
+    unit_of_measurement: "A"
+    optimistic: true
+    on_value:
+      - lambda: |-
+          id(current_amps_setting) = (int)x;
+          int pot_value = (int)((x - 8) / 4.0 * (128.0/((64-8)/4.0)));
+          id(my_potentiometer).setWiper(pot_value);
+          ESP_LOGD("main", "Ladeleistung auf %dA gesetzt.", (int)x);
+
+button:
+  - platform: template
+    name: "Modus: Automatik"
+    on_press:
+      - lambda: |-
+          id(wallbox_mode) = 0;
+          id(current_amps_setting) = 12;
+          id(Ladeleistung).publish_state(12);
+          ESP_LOGD("main", "Modus auf Automatik gesetzt.");
+
+  - platform: template
+    name: "Modus: Maximal laden"
+    on_press:
+      - lambda: |-
+          id(wallbox_mode) = 1;
+          id(override_start_time) = millis();
+          id(current_amps_setting) = 32;
+          id(Ladeleistung).publish_state(32);
+          ESP_LOGD("main", "Modus auf Maximal gesetzt, 32A.");
+
+  - platform: template
+    name: "Modus: Überschussladen"
+    on_press:
+      - lambda: |-
+          id(wallbox_mode) = 2;
+          id(current_amps_setting) = 12;
+          id(Ladeleistung).publish_state(12);
+          ESP_LOGD("main", "Modus auf Überschuss gesetzt, 12A.");
+
+sensor:
+  - platform: template
+    name: "Mocked PV Power"
+    id: mocked_pv_power
+    unit_of_measurement: "W"
+
+time:
+  - platform: sntp
+    id: sntp_time
+    on_time:
+      - seconds: /5
+        then:
+          - if:
+              condition:
+                lambda: 'return id(wallbox_mode) == 0;'
+              then:
+                - if:
+                    condition:
+                      lambda: 'return id(mocked_pv_power).state < 300;'
+                    then:
+                      - lambda: 'id(Ladeleistung).publish_state(32);'
