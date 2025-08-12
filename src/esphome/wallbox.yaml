@@ -1,5 +1,6 @@
 esphome:
   name: wallbox
+  friendly_name: Wallbox
   platformio_options:
     lib_deps:
       - "Wire"
@@ -15,6 +16,9 @@ external_components:
 
 esp8266:
   board: d1_mini_lite
+
+substitutions:
+  default_charge_amps: '12'
 
 wifi:
   ssid: !secret wifi_ssid
@@ -32,6 +36,17 @@ ota:
 
 web_server:
   port: 80
+  
+api:
+  password: "kAnmZjHuXtWkVaz1ctOAThgK+BUfLDeN7vBPCyhiMKA="
+  services:
+    - service: set_charging_amps
+      variables:
+        amps: int
+      then:
+        - number.set:
+            id: charging_amps_override
+            value: !lambda 'return amps;'
 
 i2c:
   id: bus_a
@@ -39,36 +54,125 @@ i2c:
   scl: D2
   scan: true
 
-# Eine Instanz der neuen Komponente erstellen und die I2C-Adresse übergeben
 ds3502_potentiometer:
   id: my_ds3502
   i2c_id: bus_a
   address: 0x28
 
-# Eine Number-Entität erstellen, die die set_wiper-Methode der Komponente aufruft
+globals:
+  - id: wallbox_mode
+    type: int
+    restore_value: false
+    initial_value: '0'
+  - id: current_amps_setting
+    type: int
+    restore_value: false
+    initial_value: '12'
+
 number:
   - platform: template
-    name: "DS3502 Wiper Control"
-    id: ds3502_wiper_control
+    name: "Ladeleistung Override"
+    id: charging_amps_override
     min_value: 0
-    max_value: 127
+    max_value: 64
     step: 1
-    optimistic: false
+    unit_of_measurement: "A"
     set_action:
       - lambda: |-
-          if (id(my_ds3502)->set_wiper((int)x)) {
-            ESP_LOGI("number", "Wiper set successfully to %d", (int)x);
+          int amps = (int)x;
+          if (amps < 6) amps = 6;
+          id(current_amps_setting) = amps;
+          id(wallbox_mode) = 0;
+          id(ds3502_output).set_level( (float)amps / 64.0 );
+      - component.update: ds3502_current_amps_sensor
+
+output:
+  - platform: template
+    id: ds3502_output
+    type: float
+    write_action:
+      - lambda: |-
+          int wiper_val = (int)(state * 127.0);
+          if (wiper_val < 0) wiper_val = 0;
+          if (wiper_val > 127) wiper_val = 127;
+          
+          if (id(my_ds3502) != nullptr && id(my_ds3502)->set_wiper(wiper_val)) {
+            ESP_LOGI("ds3502", "Wiper set successfully to %d", wiper_val);
           } else {
-            ESP_LOGE("number", "Failed to set wiper to %d", (int)x);
+            ESP_LOGE("ds3502", "Failed to set wiper value");
           }
 
-# Eine Sensor-Entität erstellen, die den Wiper-Wert ausliest
 sensor:
   - platform: template
-    name: "DS3502 Wiper Position"
-    id: ds3502_wiper_sensor
-    unit_of_measurement: ""
+    name: "Wallbox Ladeleistung"
+    id: ds3502_current_amps_sensor
+    unit_of_measurement: "A"
     accuracy_decimals: 0
-    update_interval: 5s
     lambda: |-
-      return id(my_ds3502)->get_wiper_value();
+      return id(current_amps_setting);
+  
+  - platform: template
+    name: "Wallbox Modus"
+    id: wallbox_mode_sensor
+    accuracy_decimals: 0
+    lambda: |-
+      return id(wallbox_mode);
+
+  - platform: template
+    name: "Mocked PV Power"
+    id: mocked_pv_power
+    unit_of_measurement: "W"
+    
+    
+button:
+  - platform: template
+    name: "Maximal Laden jetzt"
+    id: charge_max_button
+    on_press:
+      - lambda: |-
+          id(wallbox_mode) = 1;
+          id(current_amps_setting) = 32;
+          id(ds3502_output).set_level( (float)id(current_amps_setting) / 64.0 );
+          
+  - platform: template
+    name: "Nur Überschussladen"
+    id: charge_surplus_button
+    on_press:
+      - lambda: |-
+          id(wallbox_mode) = 2;
+          id(current_amps_setting) = ${default_charge_amps};
+          id(ds3502_output).set_level( (float)id(current_amps_setting) / 64.0 );
+
+  - platform: template
+    name: "Automatikmodus"
+    on_press:
+      - lambda: |-
+          id(wallbox_mode) = 0;
+          
+time:
+  - platform: sntp
+    id: sntp_time
+    # Automatisierungs-Trigger (jede Minute) befindet sich nun hier
+    on_time:
+      - cron: "0 * * * * *"
+        then:
+          - if:
+              condition:
+                - lambda: 'return id(wallbox_mode) == 0;'
+              then:
+                - if:
+                    condition:
+                      - lambda: 'return id(mocked_pv_power).state < 100;'
+                    then:
+                      - lambda: |-
+                          ESP_LOGD("automode", "PV-Leistung zu gering, wechsle zu Maximaler Ladeleistung.");
+                          id(current_amps_setting) = 32;
+                          id(ds3502_output).set_level( (float)id(current_amps_setting) / 64.0 );
+                - if:
+                    condition:
+                      - lambda: 'return id(mocked_pv_power).state >= 100 && id(current_amps_setting) > ${default_charge_amps};'
+                    then:
+                      - lambda: |-
+                          ESP_LOGD("automode", "PV-Leistung verfügbar, wechsle zurück zu Überschussladen.");
+                          id(current_amps_setting) = ${default_charge_amps};
+                          id(ds3502_output).set_level( (float)id(current_amps_setting) / 64.0 );
