@@ -1,0 +1,74 @@
+esphome:
+  name: wallbox
+  platformio_options:
+    lib_deps:
+      - "Wire"
+      - "SPI"
+      - "Adafruit BusIO"
+      - "adafruit/Adafruit DS3502@^1.0.3"
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [ds3502_potentiometer]
+
+esp8266:
+  board: d1_mini_lite
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "Wallbox Fallback Hotspot"
+    password: "PRjHPY18z5MC"
+
+logger:
+  level: DEBUG
+
+ota:
+  platform: esphome
+  password: "2db4bb5b7fffc371c432344fb6881f73"
+
+web_server:
+  port: 80
+
+i2c:
+  id: bus_a
+  sda: D1
+  scl: D2
+  scan: true
+
+# Eine Instanz der neuen Komponente erstellen und die I2C-Adresse übergeben
+ds3502_potentiometer:
+  id: my_ds3502
+  i2c_id: bus_a
+  address: 0x28
+
+# Eine Number-Entität erstellen, die die set_wiper-Methode der Komponente aufruft
+number:
+  - platform: template
+    name: "DS3502 Wiper Control"
+    id: ds3502_wiper_control
+    min_value: 0
+    max_value: 127
+    step: 1
+    optimistic: false
+    set_action:
+      - lambda: |-
+          if (id(my_ds3502)->set_wiper((int)x)) {
+            ESP_LOGI("number", "Wiper set successfully to %d", (int)x);
+          } else {
+            ESP_LOGE("number", "Failed to set wiper to %d", (int)x);
+          }
+
+# Eine Sensor-Entität erstellen, die den Wiper-Wert ausliest
+sensor:
+  - platform: template
+    name: "DS3502 Wiper Position"
+    id: ds3502_wiper_sensor
+    unit_of_measurement: ""
+    accuracy_decimals: 0
+    update_interval: 5s
+    lambda: |-
+      return id(my_ds3502)->get_wiper_value();
