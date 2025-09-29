@@ -2,6 +2,7 @@
 #include "esphome/core/log.h"
 #include "esphome/components/i2c/i2c.h"
 #include "Adafruit_DS3502.h"
+#include <map>
 
 namespace esphome
 {
@@ -23,8 +24,40 @@ namespace esphome
           this->mark_failed();
           return;
         }
-        this->set_wiper(0);
+        // Setze den Initialwert auf 12A
+        this->set_wiper(amps_to_wiper(12));
         ESP_LOGCONFIG(TAG, "DS3502 Potentiometer successfully set up.");
+      }
+
+      int amps_to_wiper(int amps)
+      {
+        if (amps >= 64)
+          return 127; // Minimaler Widerstand für maximalen Strom
+        if (amps >= 50)
+          return 110;
+        if (amps >= 48)
+          return 105;
+        if (amps >= 45)
+          return 98;
+        if (amps >= 40)
+          return 90;
+        if (amps >= 36)
+          return 85;
+        if (amps >= 32)
+          return 80;
+        if (amps >= 27)
+          return 70;
+        if (amps >= 24)
+          return 60;
+        if (amps >= 20)
+          return 50;
+        if (amps >= 16)
+          return 40;
+        if (amps >= 12)
+          return 30;
+        if (amps >= 10)
+          return 20;
+        return 0; // Standardwert für niedrigsten Strom
       }
 
       bool set_wiper(int value)
