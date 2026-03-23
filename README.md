@@ -19,3 +19,7 @@ Steuert die Ladeleistung einer analogen EVSE (z. B. AnalogEVSE) über ein digi
 3. `esphome run wallbox.yaml` (oder über das ESPHome-Dashboard).
 
 Hintergrund zur **linearen** Strom↔Wiper-Zuordnung und optionalen Referenz-PDFs: siehe `Referenz/README.md`.
+
+## Home Assistant (Überschussladen)
+
+Paket mit Automation und Templates: **`homeassistant/packages/wallbox.yaml`** — Anleitung: **`homeassistant/README.md`**. Voraussetzung: API-Verschlüsselung wie in `secrets.yaml`, Gerät `wallbox` in HA eingebunden. Service für die Regelung: `set_charging_amps_auto` (nur Modus Automatik).

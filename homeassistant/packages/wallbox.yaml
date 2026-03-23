@@ -1,0 +1,89 @@
+# Wallbox: PV-Überschuss → Ladestrom (ESPHome-Service set_charging_amps_auto)
+#
+# Einbindung: diese Datei nach /config/packages/wallbox.yaml kopieren und in configuration.yaml:
+#   homeassistant:
+#     packages: !include_dir_named packages/
+#
+# Anpassen:
+#   1) Unten bei sensor.wallbox_pv_rohleistung: den Mess-Sensor eintragen (positiver Überschuss in W).
+#   2) Entity-ID sensor.wallbox_wallbox_modus in der Automation prüfen (Gerät „Wallbox“).
+
+input_number:
+  wallbox_min_amps:
+    name: Wallbox Mindeststrom
+    min: 6
+    max: 16
+    step: 1
+    unit_of_measurement: A
+    icon: mdi:current-dc
+    initial: 6
+  wallbox_max_amps:
+    name: Wallbox Maximalstrom
+    min: 6
+    max: 64
+    step: 1
+    unit_of_measurement: A
+    icon: mdi:current-dc
+    initial: 32
+  wallbox_spannung_effektiv:
+    name: Wallbox Spannung pro Phase
+    min: 200
+    max: 250
+    step: 1
+    unit_of_measurement: V
+    initial: 230
+
+input_select:
+  wallbox_anschluss:
+    name: Wallbox Anschluss
+    icon: mdi:transmission-tower
+    options:
+      - "1x230V"
+      - "3x230V"
+    initial: "1x230V"
+
+template:
+  - sensor:
+      # Ersetze nur den states('...')-Teil durch deinen Zähler-/PV-Überschuss-Sensor (Watt, >=0).
+      - name: "Wallbox PV Rohleistung"
+        unique_id: wallbox_pv_rohleistung
+        unit_of_measurement: W
+        device_class: power
+        state_class: measurement
+        state: "{{ states('sensor.REPLACE_ME_HIER_EUREN_UEBERSCHUSS_SENSOR') | float(0) }}"
+
+      - name: "Wallbox Zielstrom"
+        unique_id: wallbox_zielstrom_a
+        unit_of_measurement: A
+        device_class: current
+        state: >
+          {% set p = states('sensor.wallbox_pv_rohleistung') | float(0) %}
+          {% set p = [0, p] | max %}
+          {% set u = states('input_number.wallbox_spannung_effektiv') | float(230) %}
+          {% set ph = 3 if is_state('input_select.wallbox_anschluss','3x230V') else 1 %}
+          {% set denom = u * ph %}
+          {% set raw = (p / denom) if denom > 0 else 0 %}
+          {% set mn = states('input_number.wallbox_min_amps') | int(6) %}
+          {% set mx = states('input_number.wallbox_max_amps') | int(32) %}
+          {% set a = (raw | round(0)) | int %}
+          {{ [[mn, a, mx] | sort][1] }}
+
+automation:
+  - id: wallbox_ueberschuss_nach_esphome
+    alias: "Wallbox: Überschuss an ESPHome (Automatik)"
+    description: Setzt den Ladestrom nur im ESP-Modus Automatik (Sensor = 0).
+    mode: restart
+    trigger:
+      - platform: time_pattern
+        seconds: /15
+      - platform: state
+        entity_id:
+          - sensor.wallbox_zielstrom
+          - sensor.wallbox_wallbox_modus
+    condition:
+      - condition: template
+        value_template: "{{ states('sensor.wallbox_wallbox_modus') | float(-1) | int == 0 }}"
+    action:
+      - service: esphome.wallbox_set_charging_amps_auto
+        data:
+          amps: "{{ states('sensor.wallbox_zielstrom') | int(6) }}"

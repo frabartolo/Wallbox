@@ -44,6 +44,7 @@ api:
   encryption:
     key: !secret api_encryption
   services:
+    # Manuell / Home Assistant „hart“ setzen → Modus 3 (Override)
     - service: set_charging_amps
       variables:
         amps: int
@@ -51,6 +52,19 @@ api:
         - number.set:
             id: charging_amps_override
             value: !lambda "return amps;"
+    # Nur im Modus Automatik (0): Strom von HA übernehmen, Modus unverändert
+    - service: set_charging_amps_auto
+      variables:
+        amps: int
+      then:
+        - lambda: |-
+            if (id(wallbox_mode) != 0) return;
+            int a = (int) amps;
+            if (a < 6) a = 6;
+            if (a > 64) a = 64;
+            id(current_amps_setting) = a;
+            id(ds3502_output).set_level((float) a / 64.0f);
+        - component.update: ds3502_current_amps_sensor
 
 i2c:
   id: bus_a
@@ -63,7 +77,7 @@ ds3502_potentiometer:
   i2c_id: bus_a
   address: 0x28
 
-# wallbox_mode: 0=Automatik (PV-Logik per Zeit), 1=Maximal, 2=Nur Überschuss (Default-Strom), 3=Manuell (Number/API, keine PV-Cron-Überschreibung)
+# wallbox_mode: 0=Automatik (Regelung durch HA), 1=Maximal, 2=Nur Überschuss (Default-Strom), 3=Manuell
 globals:
   - id: wallbox_mode
     type: int
@@ -123,11 +137,6 @@ sensor:
     lambda: |-
       return id(wallbox_mode);
 
-  - platform: template
-    name: "Mocked PV Power"
-    id: mocked_pv_power
-    unit_of_measurement: "W"
-
 button:
   - platform: template
     name: "Maximal Laden jetzt"
@@ -159,30 +168,3 @@ button:
 time:
   - platform: sntp
     id: sntp_time
-    on_time:
-      - cron: "0 * * * * *"
-        then:
-          - if:
-              condition:
-                - lambda: "return id(wallbox_mode) == 0;"
-              then:
-                - if:
-                    condition:
-                      - lambda: "return id(mocked_pv_power).state < 100;"
-                    then:
-                      - lambda: |-
-                          ESP_LOGD("automode", "PV-Leistung zu gering, wechsle zu Maximaler Ladeleistung.");
-                          id(current_amps_setting) = 32;
-                          id(ds3502_output).set_level((float) id(current_amps_setting) / 64.0f);
-                      - component.update: ds3502_current_amps_sensor
-                - if:
-                    condition:
-                      - lambda: |-
-                          return id(mocked_pv_power).state >= 100 &&
-                                 id(current_amps_setting) > ${default_charge_amps};
-                    then:
-                      - lambda: |-
-                          ESP_LOGD("automode", "PV-Leistung verfügbar, wechsle zurück zu Überschussladen.");
-                          id(current_amps_setting) = ${default_charge_amps};
-                          id(ds3502_output).set_level((float) id(current_amps_setting) / 64.0f);
-                      - component.update: ds3502_current_amps_sensor
