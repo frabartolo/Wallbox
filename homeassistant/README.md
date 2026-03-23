@@ -11,7 +11,8 @@ Die zentrale **`configuration.yaml`** bleibt schlank; fachliche Blöcke liegen u
 | **`automations/wallbox.yaml`** | Überschuss → ESPHome; optional Benachrichtigung „Ladevorgang beendet“ (Scheinleistung unter 2000 VA, 1 min) — `notify.*` anpassen |
 | **`packages/mqtt_volkszaehler.yaml`** | MQTT-Sensoren (Volkszähler / vzlogger) |
 | **`packages/eos.yaml`** | `rest_command` + REST-Sensor für EOS |
-| **`packages/wallbox.yaml`** | Hilfs-Entitäten + Template-Sensoren (PV-Rohleistung, Zielstrom); Steuer-Automation: **`automations/wallbox.yaml`** |
+| **`packages/wallbox.yaml`** | Hilfs-Entitäten, `input_boolean.wallbox_pv_regelung`, Template-Sensoren; Automation: **`automations/wallbox.yaml`** |
+| **`dashboards/wallbox.yaml`** | Lovelace-Dashboard „Wallbox“ (optional; `lovelace:` in `configuration.yaml` einbinden) |
 
 ## Einbindung
 
@@ -32,11 +33,15 @@ Unter **`/config/automations/`** liegen beliebig viele `.yaml`-Dateien; jede ent
 
 ## Messgröße Wallbox-Paket
 
-Regelung über **`sensor.verbrauch_aktuell`** (MQTT „Verbrauch Aktuell“, OBIS 16.7.0): negatives W = Einspeisung → nutzbarer Überschuss `max(0,-W)`. Die MQTT-**`unique_id`** (z. B. `sensor.16-7-0-…`) ist **nicht** die Entity-ID. Optional: Ableitung **`sensor.wallbox_lieferung_leistung`** aus dem Liefer-Zählerstand Wh (nur Einspeiseanteil, siehe Kommentar in `packages/wallbox.yaml`).
+Regelung über **`sensor.verbrauch_aktuell`** (MQTT „Verbrauch Aktuell“, OBIS 16.7.0): negatives W = Einspeisung → nutzbarer Überschuss `max(0,-W)`. **Zielstrom:** rechnerisch unter **6 A** → **0 A** (kein Mindestladen). **`input_boolean.wallbox_pv_regelung`:** aus = keine automatische Übergabe an ESP (manuell oder ESP-Modi). Die MQTT-**`unique_id`** ist **nicht** die Entity-ID. Optional: **`sensor.wallbox_lieferung_leistung`** (Ableitung Wh).
+
+## Dashboard „Wallbox“
+
+`configuration.example.yaml` enthält einen Block **`lovelace:`** mit Dashboard **`wallbox`** → Datei **`/config/dashboards/wallbox.yaml`**. Wenn **`lovelace:`** bei dir schon existiert, nur den Unterblock **`dashboards:`** zusammenführen. **Reihenfolge in der Seitenleiste:** *Einstellungen → Dashboards* → „Wallbox“ nach oben ziehen. Entity-IDs des ESPHome-Geräts (z. B. `number.*`) ggf. im Dashboard anpassen.
 
 ## Skript
 
-`scripts/update-homeassistant-esphome.sh` kopiert **`homeassistant/packages/*.yaml`** nach `~/homeassistant/packages/`, **`homeassistant/automations/*.yaml`** (z. B. **`wallbox.yaml`**) nach `~/homeassistant/automations/` (und ESPHome nach `~/homeassistant/esphome/`).
+`scripts/update-homeassistant-esphome.sh` kopiert Pakete, Automationen, optional **`homeassistant/dashboards/*.yaml`** nach `~/homeassistant/dashboards/` (und ESPHome nach `~/homeassistant/esphome/`).
 
 ## Service
 

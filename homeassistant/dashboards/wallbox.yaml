@@ -1,0 +1,37 @@
+# Dashboard „Wallbox“ – nach /config/dashboards/wallbox.yaml kopieren und in configuration.yaml
+# unter lovelace: dashboards: … einbinden (siehe configuration.example.yaml).
+# Entity-IDs des ESPHome-Geräts ggf. unter Einstellungen → Entwicklerwerkzeuge prüfen
+# (z. B. number.wallbox_wallbox_soll_ladestrom).
+
+title: Wallbox
+views:
+  - title: Übersicht
+    path: main
+    icon: mdi:ev-station
+    cards:
+      - type: entities
+        title: PV-Überschussregelung (Home Assistant)
+        show_header_toggle: false
+        entities:
+          - entity: input_boolean.wallbox_pv_regelung
+            name: Regelung aktiv
+          - entity: sensor.wallbox_zielstrom
+          - entity: sensor.wallbox_pv_rohleistung
+          - entity: sensor.verbrauch_aktuell
+          - entity: input_number.wallbox_min_amps
+          - entity: input_number.wallbox_max_amps
+          - entity: input_number.wallbox_spannung_effektiv
+          - entity: input_select.wallbox_anschluss
+      - type: entities
+        title: Wallbox-Gerät (ESPHome)
+        show_header_toggle: false
+        entities:
+          - entity: sensor.wallbox_wallbox_modus
+            name: Modus (0=Automatik)
+          - entity: number.wallbox_wallbox_soll_ladestrom
+          - entity: sensor.wallbox_wallbox_ladestrom
+          - entity: sensor.wallbox_wallbox_ladeleistung
+          - type: divider
+          - entity: button.wallbox_wallbox_automatikmodus
+          - entity: button.wallbox_wallbox_maximal_laden_jetzt
+          - entity: button.wallbox_wallbox_nur_uberschussladen

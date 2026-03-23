@@ -3,6 +3,7 @@
 #   - ESPHome: src/esphome/ → ~/homeassistant/esphome/
 #   - HA-Pakete: homeassistant/packages/*.yaml → ~/homeassistant/packages/
 #   - homeassistant/automations/*.yaml (u. a. wallbox.yaml) → ~/homeassistant/automations/
+#   - homeassistant/dashboards/*.yaml → ~/homeassistant/dashboards/
 
 set -euo pipefail
 
@@ -12,8 +13,10 @@ HA_BASE="${HOME}/homeassistant"
 DEST_ESPHOME="${HA_BASE}/esphome"
 DEST_PACKAGES="${HA_BASE}/packages"
 DEST_AUTOMATIONS="${HA_BASE}/automations"
+DEST_DASHBOARDS="${HA_BASE}/dashboards"
 HA_PKG_DIR="${ROOT}/homeassistant/packages"
 HA_AUTOMATIONS_DIR="${ROOT}/homeassistant/automations"
+HA_DASHBOARDS_DIR="${ROOT}/homeassistant/dashboards"
 
 if [[ ! -f "${SRC}/wallbox.yaml" ]]; then
   echo "Fehler: ${SRC}/wallbox.yaml nicht gefunden." >&2
@@ -56,5 +59,20 @@ else
     mkdir -p "${DEST_AUTOMATIONS}"
     cp "${HA_AUTOMATIONS_DIR}"/*.yaml "${DEST_AUTOMATIONS}/"
     echo "OK HA-Automationen (${#autos[@]} Dateien): ${HA_AUTOMATIONS_DIR} -> ${DEST_AUTOMATIONS}/"
+  fi
+fi
+
+if [[ ! -d "${HA_DASHBOARDS_DIR}" ]]; then
+  echo "Hinweis: ${HA_DASHBOARDS_DIR} nicht gefunden, überspringe HA-Dashboards." >&2
+else
+  shopt -s nullglob
+  dash=( "${HA_DASHBOARDS_DIR}"/*.yaml )
+  shopt -u nullglob
+  if [[ ${#dash[@]} -eq 0 ]]; then
+    echo "Hinweis: Keine *.yaml in ${HA_DASHBOARDS_DIR}" >&2
+  else
+    mkdir -p "${DEST_DASHBOARDS}"
+    cp "${HA_DASHBOARDS_DIR}"/*.yaml "${DEST_DASHBOARDS}/"
+    echo "OK HA-Dashboards (${#dash[@]} Dateien): ${HA_DASHBOARDS_DIR} -> ${DEST_DASHBOARDS}/"
   fi
 fi

@@ -63,10 +63,15 @@ api:
         - lambda: |-
             if (id(wallbox_mode) != 0) return;
             int a = (int) amps;
-            if (a < 6) a = 6;
-            if (a > 64) a = 64;
-            id(current_amps_setting) = a;
-            id(ds3502_output).set_level((float) a / 64.0f);
+            if (a == 0) {
+              id(current_amps_setting) = 0;
+              id(ds3502_output).set_level(0.0f);
+            } else {
+              if (a < 6) a = 6;
+              if (a > 64) a = 64;
+              id(current_amps_setting) = a;
+              id(ds3502_output).set_level((float) a / 64.0f);
+            }
         - component.update: charging_amps_override
         - component.update: ds3502_current_amps_sensor
 
@@ -106,7 +111,7 @@ number:
     set_action:
       - lambda: |-
           int amps = (int) x;
-          if (amps < 6) amps = 6;
+          if (amps != 0 && amps < 6) amps = 6;
           id(current_amps_setting) = amps;
           id(wallbox_mode) = 3;
           id(ds3502_output).set_level((float) amps / 64.0f);

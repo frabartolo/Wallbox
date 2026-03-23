@@ -1,28 +1,30 @@
 # Wallbox: PV-Überschuss → ESPHome (siehe packages/wallbox.yaml für Sensoren/Hilfsgrößen).
 # Einbindung in configuration.yaml: automation: !include_dir_merge_list automations/
 #
+# Kein periodischer Trigger: nur bei geändertem Zielstrom (z. B. 0↔6A) oder Modus/Regelungs-Schalter.
 # Ladeleistung: sensor.wallbox_wallbox_ladeleistung = Scheinleistung aus HA (Shelly), siehe ESPHome wallbox.yaml.
 # Benachrichtigungen: for_each-Liste an eigene notify.mobile_app_*-Dienste anpassen (Einstellungen → Dienste).
 
 - id: wallbox_ueberschuss_nach_esphome
   alias: "Wallbox: Überschuss an ESPHome (Automatik)"
-  description: Setzt den Ladestrom nur im ESP-Modus Automatik (Sensor = 0).
+  description: Setzt den Ladestrom nur bei geändertem Soll (Zielstrom), nur im ESP-Modus Automatik (0).
   mode: restart
   trigger:
-    - platform: time_pattern
-      seconds: /15
     - platform: state
       entity_id:
         - sensor.wallbox_zielstrom
         - sensor.wallbox_wallbox_modus
-        - sensor.verbrauch_aktuell
+        - input_boolean.wallbox_pv_regelung
   condition:
     - condition: template
       value_template: "{{ states('sensor.wallbox_wallbox_modus') | float(-1) | int == 0 }}"
+    - condition: state
+      entity_id: input_boolean.wallbox_pv_regelung
+      state: "on"
   action:
     - service: esphome.wallbox_set_charging_amps_auto
       data:
-        amps: "{{ states('sensor.wallbox_zielstrom') | int(6) }}"
+        amps: "{{ states('sensor.wallbox_zielstrom') | int(0) }}"
 
 - id: wallbox_ladevorgang_beendet_benachrichtigung
   alias: "Wallbox: Ladevorgang beendet (Benachrichtigung)"

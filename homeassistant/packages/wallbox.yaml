@@ -10,8 +10,9 @@
 # Messgröße für die Regelung: sensor.verbrauch_aktuell (MQTT „Verbrauch Aktuell“, OBIS 16.7.0).
 # Wirkleistung am Netzanschluss: positiv = Bezug aus dem Netz → Ladeleistung senken;
 # negativ = Einspeisung → verfügbarer Überschuss für die Wallbox als max(0, −W).
-# „Zaehler Lieferung Wh“ ist ein Energiezählerstand (Wh), keine Momentanleistung – daraus
-# wird optional sensor.wallbox_lieferung_leistung (Ableitung, W) berechnet, nur zur Einordnung.
+# Zielstrom: rechnerisch < 6 A → 0 A (kein Mindestladen bei zu wenig Überschuss); sonst min/max begrenzt.
+# input_boolean.wallbox_pv_regelung: aus = keine HA-Übernahme (manuell/ESP-Modi).
+# „Zaehler Lieferung Wh“: Zählerstand (Wh); optional sensor.wallbox_lieferung_leistung (Ableitung).
 
 input_number:
   wallbox_min_amps:
@@ -47,6 +48,12 @@ input_select:
       - "3x230V"
     initial: "1x230V"
 
+input_boolean:
+  wallbox_pv_regelung:
+    name: Wallbox PV-Überschussregelung
+    icon: mdi:solar-power
+    initial: true
+
 sensor:
   - platform: derivative
     source: sensor.zaehler_lieferung_wh
@@ -78,7 +85,11 @@ template:
           {% set ph = 3 if is_state('input_select.wallbox_anschluss','3x230V') else 1 %}
           {% set denom = u * ph %}
           {% set raw = (p / denom) if denom > 0 else 0 %}
+          {% if raw < 6 %}
+          0
+          {% else %}
           {% set mn = states('input_number.wallbox_min_amps') | int(6) %}
           {% set mx = states('input_number.wallbox_max_amps') | int(32) %}
           {% set a = (raw | round(0)) | int %}
           {{ [[mn, a, mx] | sort][1] }}
+          {% endif %}

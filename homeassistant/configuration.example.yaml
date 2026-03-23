@@ -23,4 +23,15 @@ automation: !include_dir_merge_list automations/
 script: !include scripts.yaml
 scene: !include scenes.yaml
 
+# Eigenes Dashboard „Wallbox“ (Datei dashboards/wallbox.yaml ins Konfigurationsverzeichnis legen).
+# Wenn du bereits einen lovelace:-Block hast: nur dashboards: wallbox: … einfügen, nicht doppeln.
+# In der Seitenleiste: Einstellungen → Dashboards → Reihenfolge anpassen („Wallbox“ nach oben).
+lovelace:
+  dashboards:
+    wallbox:
+      mode: yaml
+      title: Wallbox
+      icon: mdi:ev-station
+      filename: dashboards/wallbox.yaml
+
 bluetooth:
