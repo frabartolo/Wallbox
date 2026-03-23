@@ -1,32 +1,67 @@
 # Home Assistant: Wallbox-Überschuss
 
-## Einrichtung
+Die Logik liegt in **`packages/wallbox.yaml`** im Repository. Du musst **kein** `packages`-Verzeichnis haben – du legst es bei Bedarf neu an.
 
-1. Datei `packages/wallbox.yaml` nach `/config/packages/wallbox.yaml` kopieren.
+## Variante A – Ordner `packages/` (empfohlen)
 
-2. In der `configuration.yaml` (oder einer eingebundenen Datei) **Packages** aktivieren, falls noch nicht geschehen:
+1. Verzeichnis anlegen und Datei kopieren:
+
+   ```bash
+   mkdir -p /config/packages
+   cp wallbox.yaml /config/packages/wallbox.yaml
+   ```
+
+   (Quelle: diese Datei aus dem Repo `homeassistant/packages/wallbox.yaml`.)
+
+2. **`configuration.yaml` anpassen:** Unter dem Schlüssel `homeassistant:` muss **Packages** eingetragen sein. Gibt es den Block noch nicht, z. B.:
 
    ```yaml
    homeassistant:
      packages: !include_dir_named packages/
    ```
 
-3. In `packages/wallbox.yaml` den Platzhalter **`sensor.REPLACE_ME_HIER_EUREN_UEBERSCHUSS_SENSOR`** durch euren echten Sensor ersetzen (Leistung in **Watt**, idealerweise **positiver** Hausüberschuss / verfügbare PV-Leistung fürs Laden).
+   **Wichtig:** Es darf nur **einen** Top-Level-Block `homeassistant:` geben. Wenn dort schon z. B. `name:` oder `latitude:` steht, **eine Zeile ergänzen** (gleiche Einrückung wie die anderen Einträge):
 
-4. Home Assistant neu starten oder **„Konfiguration prüfen“** und **Neustart**.
+   ```yaml
+   homeassistant:
+     name: Home
+     packages: !include_dir_named packages/
+     # … rest wie bisher
+   ```
 
-5. **Entity-ID „Wallbox Modus“** prüfen: *Entwicklerwerkzeuge → Zustände* nach `modus` filtern (Gerät Wallbox). In der Automation ist standardmäßig `sensor.wallbox_wallbox_modus` eingetragen. Weicht die ID ab (z. B. `sensor.wallbox_modus`), in `wallbox.yaml` bei `entity_id` und in der **Bedingung** der Automation anpassen.
+3. In `/config/packages/wallbox.yaml` den Platzhalter **`sensor.REPLACE_ME_HIER_EUREN_UEBERSCHUSS_SENSOR`** durch euren Sensor ersetzen (Überschuss in **Watt**).
 
-6. ESPHome-Gerät **wallbox** muss mit Home Assistant verbunden sein. Der Service lautet:
+4. **Konfiguration prüfen** und Home Assistant **neu starten**.
 
-   `esphome.wallbox_set_charging_amps_auto`
+## Variante B – eine Datei direkt unter `/config`
+
+Wenn du **keinen** Ordner `packages/` willst:
+
+1. Die Repo-Datei nach z. B. **`/config/wallbox_ha.yaml`** kopieren.
+
+2. In **`configuration.yaml`** (unter `homeassistant:`) einbinden:
+
+   ```yaml
+   homeassistant:
+     packages:
+       wallbox: !include wallbox_ha.yaml
+   ```
+
+   Bestehende `packages:`-Einträge mit weiteren Zeilen erweitern, nicht doppeln.
+
+3. Platzhalter-Sensor und Modus-Entity-ID wie in Variante A anpassen.
+
+## Danach immer
+
+- **Entity-ID „Wallbox Modus“** prüfen (*Entwicklerwerkzeuge → Zustände*). In der Automation steht `sensor.wallbox_wallbox_modus` – bei Abweichung in `wallbox.yaml` anpassen.
+- ESPHome-Gerät **wallbox** verbunden; Service: **`esphome.wallbox_set_charging_amps_auto`**.
 
 ## Verhalten
 
-- **Modus 0 (Automatik)** auf dem ESP: Home Assistant schreibt alle **15 Sekunden** (und bei Änderung) den berechneten Zielstrom per Service.
-- **Andere Modi** (Max, Überschuss-Default, Manuell): Der Service wird vom ESP ignoriert (`set_charging_amps_auto` wirkt nur bei Modus 0).
+- **Modus 0 (Automatik)** auf dem ESP: Home Assistant setzt den Strom per Service (ca. alle **15 s** und bei Änderung).
+- **Andere Modi:** Der ESP ignoriert `set_charging_amps_auto`.
 
 ## Hilfsmittel
 
-- **Eingaben** (Min/Max-Strom, 1×230 V / 3×230 V, Spannung) steuern die Umrechnung Watt → Ampere.
-- Formel: \(I \approx P / (U \times \text{Phasen})\), danach Begrenzung auf Min/Max.
+- **Eingaben** (Min/Max-Strom, 1×230 V / 3×230 V, Spannung) steuern Watt → Ampere.
+- Näherung: \(I \approx P / (U \times \text{Phasen})\), begrenzt auf Min/Max.

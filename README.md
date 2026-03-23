@@ -4,7 +4,7 @@ Steuert die Ladeleistung einer analogen EVSE (z. B. AnalogEVSE) über ein digi
 
 - Steuerung aus Home Assistant (Entitäten + optional `set_charging_amps`)
 - Browser: Status und Override über den eingebauten ESPHome-Webserver
-- PV-abhängige Automatik auf dem Gerät (Modus **Automatik**, Test über Sensor „Mocked PV Power“)
+- PV-/Überschuss-Regelung in **Home Assistant** (Modus **Automatik** auf dem ESP)
 
 ## Hardware
 
