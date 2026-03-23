@@ -42,7 +42,7 @@ web_server:
 
 api:
   encryption:
-    key: !secret api_encryption_key
+    key: !secret api_encryption
   services:
     - service: set_charging_amps
       variables:

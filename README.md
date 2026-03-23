@@ -15,7 +15,7 @@ Steuert die Ladeleistung einer analogen EVSE (z. B. AnalogEVSE) über ein digi
 ## Konfiguration
 
 1. Verzeichnis `src/esphome/`
-2. `secrets.yaml` aus `secrets.yaml.example` anlegen und alle Platzhalter setzen (siehe `.gitignore`: `secrets.yaml` nicht committen). API-Key: `openssl rand -base64 32` → `api_encryption_key` (ESPHome 2026.1+). Beim Einbinden in Home Assistant denselben Schlüssel angeben.
+2. `secrets.yaml` aus `secrets.yaml.example` anlegen und alle Platzhalter setzen (siehe `.gitignore`: `secrets.yaml` nicht committen). API-Key: `openssl rand -base64 32` → Eintrag `api_encryption` (Name muss zu `!secret api_encryption` in `wallbox.yaml` passen; umbenennen geht jederzeit). Beim Einbinden in Home Assistant denselben Schlüsselwert angeben.
 3. `esphome run wallbox.yaml` (oder über das ESPHome-Dashboard).
 
 Hintergrund zur **linearen** Strom↔Wiper-Zuordnung und optionalen Referenz-PDFs: siehe `Referenz/README.md`.
