@@ -17,7 +17,7 @@ Steuert die Ladeleistung einer analogen EVSE (z. B. AnalogEVSE) über ein digi
 1. Verzeichnis `src/esphome/`
 2. `secrets.yaml` aus `secrets.yaml.example` anlegen und alle Platzhalter setzen (siehe `.gitignore`: `secrets.yaml` nicht committen). API-Key: `openssl rand -base64 32` → Eintrag `api_encryption` (Name muss zu `!secret api_encryption` in `wallbox.yaml` passen; umbenennen geht jederzeit). Beim Einbinden in Home Assistant denselben Schlüsselwert angeben.
 3. `esphome run wallbox.yaml` (oder über das ESPHome-Dashboard).  
-   Anzeige: **Soll-Ladestrom** (Slider, A), **Ladestrom** (A), **Ladeleistung** = Messwert aus Home Assistant (**Shelly Scheinleistung**, Entität `ha_shelly_scheinleistung_entity` in der YAML anpassen).
+   Anzeige: **Soll-Ladestrom** (Slider, A), **Ladestrom** (A), **Ladeleistung** = Messwert aus HA (**Shelly Scheinleistung**; Entität `ha_shelly_scheinleistung_entity` anpassen – kann bei Ladern sinnvoller zur „gefühlt“ richtigen Größe passen als Wirkleistung allein).
 
 Hintergrund zur **linearen** Strom↔Wiper-Zuordnung und optionalen Referenz-PDFs: siehe `Referenz/README.md`.
 

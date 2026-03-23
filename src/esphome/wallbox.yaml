@@ -19,8 +19,8 @@ esp8266:
 
 substitutions:
   default_charge_amps: "12"
-  # Home Assistant: Shelly Pro 3EM Scheinleistung (typisch VA). Entity-ID in HA prüfen und anpassen.
-  # Optional stattdessen Wirkleistung (W), wenn du kW/VA nicht verwechseln willst.
+  # Shelly Pro 3EM: Anzeige bewusst über Scheinleistung (S); passt hier besser zur erwarteten Ladegröße
+  # als reine Wirkleistung (P) – beides in HA prüfbar. Entity-ID ggf. anpassen.
   ha_shelly_scheinleistung_entity: "sensor.shellypro3em_2cbcbba674c0_total_apparent_power"
 
 wifi:
