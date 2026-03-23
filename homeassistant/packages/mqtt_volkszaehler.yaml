@@ -6,6 +6,7 @@ mqtt:
   - sensor:
       name: "Zaehler Bezug Wh"
       unique_id: sensor.1-8-0-ZaehlerBezugWh
+      default_entity_id: sensor.zaehler_bezug_wh
       device_class: energy
       state_class: total_increasing
       state_topic: vzlogger/data/chn0/raw
@@ -32,6 +33,7 @@ mqtt:
   - sensor:
       name: "Solaranlage Erzeugung aktuell"
       unique_id: sensor.2-8-0-SolaranlageErzeugungW
+      default_entity_id: sensor.solaranlage_erzeugung_aktuell_w
       device_class: power
       state_topic: vzlogger/data/chn3/raw
       state_class: measurement
@@ -40,6 +42,7 @@ mqtt:
   - sensor:
       name: "Lieferung aktuell"
       unique_id: sensor.16-7-0-LieferungAktuellW
+      default_entity_id: sensor.lieferung_aktuell_w
       device_class: power
       state_topic: vzlogger/data/chn4/raw
       state_class: measurement
