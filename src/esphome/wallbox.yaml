@@ -19,6 +19,9 @@ esp8266:
 
 substitutions:
   default_charge_amps: "12"
+  # Leistung ≈ Ladestrom × Spannung × Phasen (für Anzeige kW)
+  wallbox_supply_volts: "230"
+  wallbox_phases: "1"
 
 wifi:
   ssid: !secret wifi_ssid
@@ -64,7 +67,9 @@ api:
             if (a > 64) a = 64;
             id(current_amps_setting) = a;
             id(ds3502_output).set_level((float) a / 64.0f);
+        - component.update: charging_amps_override
         - component.update: ds3502_current_amps_sensor
+        - component.update: wallbox_power_kw
 
 i2c:
   id: bus_a
@@ -89,13 +94,16 @@ globals:
     initial_value: "12"
 
 number:
+  # Zeigt immer den eingestellten Soll-Ladestrom (A); Schieben = manuell (Modus 3)
   - platform: template
-    name: "Ladeleistung Override"
+    name: "Wallbox Soll-Ladestrom"
     id: charging_amps_override
     min_value: 0
     max_value: 64
     step: 1
     unit_of_measurement: "A"
+    lambda: |-
+      return (float) id(current_amps_setting);
     set_action:
       - lambda: |-
           int amps = (int) x;
@@ -103,7 +111,9 @@ number:
           id(current_amps_setting) = amps;
           id(wallbox_mode) = 3;
           id(ds3502_output).set_level((float) amps / 64.0f);
+      - component.update: charging_amps_override
       - component.update: ds3502_current_amps_sensor
+      - component.update: wallbox_power_kw
 
 output:
   - platform: template
@@ -122,13 +132,25 @@ output:
           }
 
 sensor:
+  # Tatsächlich eingestellter Ladestrom (entspricht Soll am Poti / EVSE-Vorgabe)
   - platform: template
-    name: "Wallbox Ladeleistung"
+    name: "Wallbox Ladestrom"
     id: ds3502_current_amps_sensor
     unit_of_measurement: "A"
     accuracy_decimals: 0
     lambda: |-
-      return id(current_amps_setting);
+      return (float) id(current_amps_setting);
+
+  # Elektrische Ladeleistung (Näherung: I × U × Phasen)
+  - platform: template
+    name: "Wallbox Ladeleistung"
+    id: wallbox_power_kw
+    unit_of_measurement: "kW"
+    accuracy_decimals: 2
+    device_class: power
+    lambda: |-
+      float i = (float) id(current_amps_setting);
+      return (i * ${wallbox_supply_volts} * ${wallbox_phases}) / 1000.0f;
 
   - platform: template
     name: "Wallbox Modus"
@@ -146,7 +168,9 @@ button:
           id(wallbox_mode) = 1;
           id(current_amps_setting) = 32;
           id(ds3502_output).set_level((float) id(current_amps_setting) / 64.0f);
+      - component.update: charging_amps_override
       - component.update: ds3502_current_amps_sensor
+      - component.update: wallbox_power_kw
 
   - platform: template
     name: "Nur Überschussladen"
@@ -156,7 +180,9 @@ button:
           id(wallbox_mode) = 2;
           id(current_amps_setting) = ${default_charge_amps};
           id(ds3502_output).set_level((float) id(current_amps_setting) / 64.0f);
+      - component.update: charging_amps_override
       - component.update: ds3502_current_amps_sensor
+      - component.update: wallbox_power_kw
 
   - platform: template
     name: "Automatikmodus"
