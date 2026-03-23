@@ -22,4 +22,4 @@ Hintergrund zur **linearen** Strom↔Wiper-Zuordnung und optionalen Referenz-PDF
 
 ## Home Assistant (Überschussladen)
 
-Paket mit Automation und Templates: **`homeassistant/packages/wallbox.yaml`** — Anleitung: **`homeassistant/README.md`**. Voraussetzung: API-Verschlüsselung wie in `secrets.yaml`, Gerät `wallbox` in HA eingebunden. Service für die Regelung: `set_charging_amps_auto` (nur Modus Automatik).
+Paket mit Automation und Templates: **`homeassistant/packages/wallbox.yaml`** — Anleitung: **`homeassistant/README.md`**. Ohne bestehenden `homeassistant:`-Block: **`homeassistant/configuration_wallbox.fragment.yaml`** als Vorlage. Service: `set_charging_amps_auto` (nur Modus Automatik).

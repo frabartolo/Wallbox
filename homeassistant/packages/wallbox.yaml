@@ -1,12 +1,12 @@
 # Wallbox: PV-Überschuss → Ladestrom (ESPHome-Service set_charging_amps_auto)
 #
-# Einbindung: diese Datei nach /config/packages/wallbox.yaml kopieren und in configuration.yaml:
+# Nach /config/packages/wallbox.yaml kopieren.
+# Voraussetzung: configuration.yaml enthält:
 #   homeassistant:
 #     packages: !include_dir_named packages/
 #
-# Anpassen:
-#   1) Unten bei sensor.wallbox_pv_rohleistung: den Mess-Sensor eintragen (positiver Überschuss in W).
-#   2) Entity-ID sensor.wallbox_wallbox_modus in der Automation prüfen (Gerät „Wallbox“).
+# Überschuss: grob Solar-Leistung minus Hausverbrauch (Volkszähler/MQTT).
+# Entity-IDs unter Entwicklerwerkzeuge → Zustände prüfen und bei Bedarf anpassen.
 
 input_number:
   wallbox_min_amps:
@@ -44,13 +44,20 @@ input_select:
 
 template:
   - sensor:
-      # Ersetze nur den states('...')-Teil durch deinen Zähler-/PV-Überschuss-Sensor (Watt, >=0).
+      # Volkszähler: Solar aktuell − Verbrauch aktuell (nur wenn >= 0).
+      # Typische IDs aus den Namen – bitte in HA gegenprüfen:
+      #   "Solaranlage Erzeugung aktuell" → sensor.solaranlage_erzeugung_aktuell
+      #   "Verbrauch Aktuell"             → sensor.verbrauch_aktuell
+      # Alternative: direkt sensor.lieferung_aktuell (Netzeinspeisung), falls der Wert besser passt.
       - name: "Wallbox PV Rohleistung"
         unique_id: wallbox_pv_rohleistung
         unit_of_measurement: W
         device_class: power
         state_class: measurement
-        state: "{{ states('sensor.REPLACE_ME_HIER_EUREN_UEBERSCHUSS_SENSOR') | float(0) }}"
+        state: >
+          {% set solar = states('sensor.solaranlage_erzeugung_aktuell') | float(0) %}
+          {% set verb = states('sensor.verbrauch_aktuell') | float(0) %}
+          {{ max(0, solar - verb) }}
 
       - name: "Wallbox Zielstrom"
         unique_id: wallbox_zielstrom_a

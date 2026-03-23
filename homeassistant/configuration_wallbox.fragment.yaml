@@ -1,0 +1,9 @@
+# ---------------------------------------------------------------------------
+# In die bestehende /config/configuration.yaml einfügen (z. B. direkt unter
+# default_config: oder am Ende der Datei). Es darf nur EIN Block
+# "homeassistant:" existieren – wenn du schon einen hast, nur die Zeile
+# "packages: ..." dort hinein kopieren (gleiche Einrückung wie die anderen Keys).
+# ---------------------------------------------------------------------------
+
+homeassistant:
+  packages: !include_dir_named packages/

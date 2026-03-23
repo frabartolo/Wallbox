@@ -1,65 +1,55 @@
 # Home Assistant: Wallbox-Überschuss
 
-Die Logik liegt in **`packages/wallbox.yaml`** im Repository. Du musst **kein** `packages`-Verzeichnis haben – du legst es bei Bedarf neu an.
+## Variante A – `packages/` (neu anlegen)
 
-## Variante A – Ordner `packages/` (empfohlen)
+### 1) Ordner und Paket
 
-1. Verzeichnis anlegen und Datei kopieren:
+```bash
+mkdir -p /config/packages
+cp wallbox.yaml /config/packages/wallbox.yaml
+```
 
-   ```bash
-   mkdir -p /config/packages
-   cp wallbox.yaml /config/packages/wallbox.yaml
-   ```
+(Quelle: `homeassistant/packages/wallbox.yaml` aus diesem Repository.)
 
-   (Quelle: diese Datei aus dem Repo `homeassistant/packages/wallbox.yaml`.)
+### 2) `configuration.yaml` – Block `homeassistant:`
 
-2. **`configuration.yaml` anpassen:** Unter dem Schlüssel `homeassistant:` muss **Packages** eingetragen sein. Gibt es den Block noch nicht, z. B.:
+Wenn **noch kein** `homeassistant:` existiert, diesen Block **einmal** ergänzen (z. B. direkt unter `default_config:`). Inhalt siehe **`configuration_wallbox.fragment.yaml`** im Repo – minimal:
 
-   ```yaml
-   homeassistant:
-     packages: !include_dir_named packages/
-   ```
+```yaml
+homeassistant:
+  packages: !include_dir_named packages/
+```
 
-   **Wichtig:** Es darf nur **einen** Top-Level-Block `homeassistant:` geben. Wenn dort schon z. B. `name:` oder `latitude:` steht, **eine Zeile ergänzen** (gleiche Einrückung wie die anderen Einträge):
+**Nur ein** Top-Level-Block `homeassistant:` – wenn du später weitere Einträge brauchst (`country`, `time_zone`, …), in **denselben** Block schreiben.
 
-   ```yaml
-   homeassistant:
-     name: Home
-     packages: !include_dir_named packages/
-     # … rest wie bisher
-   ```
+### 3) Konfiguration prüfen & Neustart
 
-3. In `/config/packages/wallbox.yaml` den Platzhalter **`sensor.REPLACE_ME_HIER_EUREN_UEBERSCHUSS_SENSOR`** durch euren Sensor ersetzen (Überschuss in **Watt**).
+### 4) Entity-IDs prüfen
 
-4. **Konfiguration prüfen** und Home Assistant **neu starten**.
+- **Überschuss:** Das Paket nutzt `sensor.solaranlage_erzeugung_aktuell` und `sensor.verbrauch_aktuell` (aus deinen MQTT-Namen). Unter **Entwicklerwerkzeuge → Zustände** gegenprüfen; bei abweichenden IDs die `state:`-Zeile bei **Wallbox PV Rohleistung** anpassen.
+- **ESPHome-Modus:** Automation nutzt `sensor.wallbox_wallbox_modus`. Wenn die ID anders lautet, in der Automation unter `entity_id` und in der **Bedingung** anpassen.
 
-## Variante B – eine Datei direkt unter `/config`
+### 5) Service
 
-Wenn du **keinen** Ordner `packages/` willst:
-
-1. Die Repo-Datei nach z. B. **`/config/wallbox_ha.yaml`** kopieren.
-
-2. In **`configuration.yaml`** (unter `homeassistant:`) einbinden:
-
-   ```yaml
-   homeassistant:
-     packages:
-       wallbox: !include wallbox_ha.yaml
-   ```
-
-   Bestehende `packages:`-Einträge mit weiteren Zeilen erweitern, nicht doppeln.
-
-3. Platzhalter-Sensor und Modus-Entity-ID wie in Variante A anpassen.
-
-## Danach immer
-
-- **Entity-ID „Wallbox Modus“** prüfen (*Entwicklerwerkzeuge → Zustände*). In der Automation steht `sensor.wallbox_wallbox_modus` – bei Abweichung in `wallbox.yaml` anpassen.
-- ESPHome-Gerät **wallbox** verbunden; Service: **`esphome.wallbox_set_charging_amps_auto`**.
+`esphome.wallbox_set_charging_amps_auto` (Gerät muss in HA eingebunden sein).
 
 ## Verhalten
 
-- **Modus 0 (Automatik)** auf dem ESP: Home Assistant setzt den Strom per Service (ca. alle **15 s** und bei Änderung).
-- **Andere Modi:** Der ESP ignoriert `set_charging_amps_auto`.
+- **Modus 0 (Automatik)** auf dem ESP: HA setzt den Strom (ca. alle **15 s** und bei Änderung).
+- **Andere Modi:** Service wird vom ESP ignoriert.
+
+## Hinweise zu deiner `configuration.yaml`
+
+- **YAML unter `mqtt`:** Der Block für „Wallbox Ladeleistung“ / „Wallbox Modus“ ist falsch eingerückt (`- sensor:` mit zusätzlichem `- name:`). Korrekt ist dieselbe Form wie bei den anderen Sensoren, z. B.:
+
+  ```yaml
+      - sensor:
+          name: "Wallbox Ladeleistung"
+          state_topic: "wallbox/state"
+          ...
+  ```
+
+  Wenn du die Wallbox über **ESPHome** anbindest, entfallen diese MQTT-Sensoren meist – sonst **doppelte** Entitäten / Namenskollision mit „Wallbox Modus“.
 
 ## Hilfsmittel
 
