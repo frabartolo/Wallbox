@@ -19,9 +19,9 @@ esp8266:
 
 substitutions:
   default_charge_amps: "12"
-  # Leistung ≈ Ladestrom × Spannung × Phasen (für Anzeige kW)
-  wallbox_supply_volts: "230"
-  wallbox_phases: "1"
+  # Home Assistant: Shelly Pro 3EM Scheinleistung (typisch VA). Entity-ID in HA prüfen und anpassen.
+  # Optional stattdessen Wirkleistung (W), wenn du kW/VA nicht verwechseln willst.
+  ha_shelly_scheinleistung_entity: "sensor.shellypro3em_2cbcbba674c0_total_apparent_power"
 
 wifi:
   ssid: !secret wifi_ssid
@@ -69,7 +69,6 @@ api:
             id(ds3502_output).set_level((float) a / 64.0f);
         - component.update: charging_amps_override
         - component.update: ds3502_current_amps_sensor
-        - component.update: wallbox_power_kw
 
 i2c:
   id: bus_a
@@ -113,7 +112,6 @@ number:
           id(ds3502_output).set_level((float) amps / 64.0f);
       - component.update: charging_amps_override
       - component.update: ds3502_current_amps_sensor
-      - component.update: wallbox_power_kw
 
 output:
   - platform: template
@@ -141,16 +139,12 @@ sensor:
     lambda: |-
       return (float) id(current_amps_setting);
 
-  # Elektrische Ladeleistung (Näherung: I × U × Phasen)
-  - platform: template
+  # Messwert aus Home Assistant (Shelly Pro 3EM Scheinleistung am Wallbox-Anschluss)
+  - platform: homeassistant
     name: "Wallbox Ladeleistung"
-    id: wallbox_power_kw
-    unit_of_measurement: "kW"
-    accuracy_decimals: 2
-    device_class: power
-    lambda: |-
-      float i = (float) id(current_amps_setting);
-      return (i * ${wallbox_supply_volts} * ${wallbox_phases}) / 1000.0f;
+    id: wallbox_power_shelly
+    entity_id: ${ha_shelly_scheinleistung_entity}
+    accuracy_decimals: 0
 
   - platform: template
     name: "Wallbox Modus"
@@ -170,7 +164,6 @@ button:
           id(ds3502_output).set_level((float) id(current_amps_setting) / 64.0f);
       - component.update: charging_amps_override
       - component.update: ds3502_current_amps_sensor
-      - component.update: wallbox_power_kw
 
   - platform: template
     name: "Nur Überschussladen"
@@ -182,7 +175,6 @@ button:
           id(ds3502_output).set_level((float) id(current_amps_setting) / 64.0f);
       - component.update: charging_amps_override
       - component.update: ds3502_current_amps_sensor
-      - component.update: wallbox_power_kw
 
   - platform: template
     name: "Automatikmodus"
