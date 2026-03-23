@@ -7,9 +7,11 @@
 #   automation: !include_dir_merge_list automations/
 # Die Automation „Überschuss an ESPHome“ liegt in automations/wallbox.yaml.
 #
-# Überschuss-Leistung (W): Stromzähler-Momentanwert sensor.16-7-0-VerbrauchAktuellW
-# (MQTT / Volkszähler). Negative Werte = Einspeisung/Überschuss → für die Wallbox
-# als positiver Watt-Wert verwendet: max(0, -Momentanleistung).
+# Messgröße für die Regelung: sensor.verbrauch_aktuell (MQTT „Verbrauch Aktuell“, OBIS 16.7.0).
+# Wirkleistung am Netzanschluss: positiv = Bezug aus dem Netz → Ladeleistung senken;
+# negativ = Einspeisung → verfügbarer Überschuss für die Wallbox als max(0, −W).
+# „Zaehler Lieferung Wh“ ist ein Energiezählerstand (Wh), keine Momentanleistung – daraus
+# wird optional sensor.wallbox_lieferung_leistung (Ableitung, W) berechnet, nur zur Einordnung.
 
 input_number:
   wallbox_min_amps:
@@ -45,18 +47,24 @@ input_select:
       - "3x230V"
     initial: "1x230V"
 
+sensor:
+  - platform: derivative
+    source: sensor.zaehler_lieferung_wh
+    name: Wallbox Lieferung Leistung
+    unique_id: wallbox_lieferung_ableitung_w
+    unit_time: h
+    round: 0
+
 template:
   - sensor:
-      # Momentanleistung (W): negativ = verfügbarer Überschuss → -w nach positiv wandeln.
-      # sensor.2-8-0-ZaehlerLieferungWh ist ein Zählerstand (Wh), kein Momentanwert – für
-      # diese Regelung ungeeignet (außer über Ableitung; hier bewusst der Leistungssensor).
+      # Nutzt 16.7.0-Leistung (sensor.verbrauch_aktuell), nicht die unique_id aus MQTT.
       - name: "Wallbox PV Rohleistung"
         unique_id: wallbox_pv_rohleistung
         unit_of_measurement: W
         device_class: power
         state_class: measurement
         state: >
-          {% set w = states('sensor.16-7-0-VerbrauchAktuellW') | float(0) %}
+          {% set w = states('sensor.verbrauch_aktuell') | float(0) %}
           {{ max(0, -w) }}
 
       - name: "Wallbox Zielstrom"

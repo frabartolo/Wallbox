@@ -8,7 +8,7 @@ Die zentrale **`configuration.yaml`** bleibt schlank; fachliche Blöcke liegen u
 |--------|--------|
 | **`configuration.example.yaml`** | Vorbild für die **root** `configuration.yaml` (ohne MQTT/EOS/Wallbox-Logik) |
 | **`configuration_wallbox.fragment.yaml`** | Nur der Block `homeassistant:` mit `packages` (falls du ihn separat einfügen willst) |
-| **`automations/wallbox.yaml`** | Automation „Überschuss an ESPHome“ (`set_charging_amps_auto`) — ergänzt `packages/wallbox.yaml` |
+| **`automations/wallbox.yaml`** | Überschuss → ESPHome; optional Benachrichtigung „Ladevorgang beendet“ (Scheinleistung unter 2000 VA, 1 min) — `notify.*` anpassen |
 | **`packages/mqtt_volkszaehler.yaml`** | MQTT-Sensoren (Volkszähler / vzlogger) |
 | **`packages/eos.yaml`** | `rest_command` + REST-Sensor für EOS |
 | **`packages/wallbox.yaml`** | Hilfs-Entitäten + Template-Sensoren (PV-Rohleistung, Zielstrom); Steuer-Automation: **`automations/wallbox.yaml`** |
@@ -32,7 +32,7 @@ Unter **`/config/automations/`** liegen beliebig viele `.yaml`-Dateien; jede ent
 
 ## Messgröße Wallbox-Paket
 
-Siehe Kommentar in `packages/wallbox.yaml`: **`sensor.16-7-0-VerbrauchAktuellW`**, negatives W = Einspeisung → `max(0,-w)`.
+Regelung über **`sensor.verbrauch_aktuell`** (MQTT „Verbrauch Aktuell“, OBIS 16.7.0): negatives W = Einspeisung → nutzbarer Überschuss `max(0,-W)`. Die MQTT-**`unique_id`** (z. B. `sensor.16-7-0-…`) ist **nicht** die Entity-ID. Optional: Ableitung **`sensor.wallbox_lieferung_leistung`** aus dem Liefer-Zählerstand Wh (nur Einspeiseanteil, siehe Kommentar in `packages/wallbox.yaml`).
 
 ## Skript
 

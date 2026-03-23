@@ -2,6 +2,7 @@
 # Keine Wallbox-MQTT-Sensoren mehr: Ladestrom/Modus kommen von ESPHome (Native API).
 
 mqtt:
+  # Hinweis: unique_id ist nicht die entity_id. Sichtbar unter Einstellungen → Geräte → Entität.
   - sensor:
       name: "Zaehler Bezug Wh"
       unique_id: sensor.1-8-0-ZaehlerBezugWh
@@ -13,6 +14,7 @@ mqtt:
   - sensor:
       name: "Zaehler Lieferung Wh"
       unique_id: sensor.2-8-0-ZaehlerLieferungWh
+      object_id: zaehler_lieferung_wh
       device_class: energy
       state_topic: vzlogger/data/chn1/raw
       state_class: total_increasing
@@ -21,6 +23,7 @@ mqtt:
   - sensor:
       name: "Verbrauch Aktuell"
       unique_id: sensor.16-7-0-VerbrauchAktuellW
+      object_id: verbrauch_aktuell
       device_class: power
       state_topic: vzlogger/data/chn2/raw
       state_class: measurement

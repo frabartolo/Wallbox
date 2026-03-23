@@ -1,5 +1,8 @@
 # Wallbox: PV-Überschuss → ESPHome (siehe packages/wallbox.yaml für Sensoren/Hilfsgrößen).
 # Einbindung in configuration.yaml: automation: !include_dir_merge_list automations/
+#
+# Ladeleistung: sensor.wallbox_wallbox_ladeleistung = Scheinleistung aus HA (Shelly), siehe ESPHome wallbox.yaml.
+# Benachrichtigungen: for_each-Liste an eigene notify.mobile_app_*-Dienste anpassen (Einstellungen → Dienste).
 
 - id: wallbox_ueberschuss_nach_esphome
   alias: "Wallbox: Überschuss an ESPHome (Automatik)"
@@ -12,7 +15,7 @@
       entity_id:
         - sensor.wallbox_zielstrom
         - sensor.wallbox_wallbox_modus
-        - sensor.16-7-0-VerbrauchAktuellW
+        - sensor.verbrauch_aktuell
   condition:
     - condition: template
       value_template: "{{ states('sensor.wallbox_wallbox_modus') | float(-1) | int == 0 }}"
@@ -20,3 +23,40 @@
     - service: esphome.wallbox_set_charging_amps_auto
       data:
         amps: "{{ states('sensor.wallbox_zielstrom') | int(6) }}"
+
+- id: wallbox_ladevorgang_beendet_benachrichtigung
+  alias: "Wallbox: Ladevorgang beendet (Benachrichtigung)"
+  description: Meldet, wenn die Scheinleistung am Wallbox-Anschluss dauerhaft unter 2000 VA fällt.
+  mode: single
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.wallbox_wallbox_ladeleistung
+      below: 2000
+      for:
+        minutes: 1
+  action:
+    # Unbenötigte Dienste löschen oder weitere notify.mobile_app_*-Zeilen ergänzen.
+    - service: notify.mobile_app_cph2135
+      data:
+        title: Wallbox
+        message: E-Auto Laden beendet!
+    - service: notify.mobile_app_sm_g930f
+      data:
+        title: Wallbox
+        message: E-Auto Laden beendet!
+    - service: notify.mobile_app_sm_s901b
+      data:
+        title: Wallbox
+        message: E-Auto Laden beendet!
+    - service: notify.mobile_app_galaxy_watch4_9lsm
+      data:
+        title: Wallbox
+        message: E-Auto Laden beendet!
+    - service: notify.mobile_app_vfd_1400
+      data:
+        title: Wallbox
+        message: E-Auto Laden beendet!
+    - service: notify.mobile_app_sm_a336b
+      data:
+        title: Wallbox
+        message: E-Auto Laden beendet!
