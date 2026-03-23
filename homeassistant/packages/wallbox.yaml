@@ -4,6 +4,8 @@
 # Voraussetzung in configuration.yaml:
 #   homeassistant:
 #     packages: !include_dir_named packages/
+#   automation: !include_dir_merge_list automations/
+# Die Automation „Überschuss an ESPHome“ liegt in automations/wallbox.yaml.
 #
 # Überschuss-Leistung (W): Stromzähler-Momentanwert sensor.16-7-0-VerbrauchAktuellW
 # (MQTT / Volkszähler). Negative Werte = Einspeisung/Überschuss → für die Wallbox
@@ -72,24 +74,3 @@ template:
           {% set mx = states('input_number.wallbox_max_amps') | int(32) %}
           {% set a = (raw | round(0)) | int %}
           {{ [[mn, a, mx] | sort][1] }}
-
-automation:
-  - id: wallbox_ueberschuss_nach_esphome
-    alias: "Wallbox: Überschuss an ESPHome (Automatik)"
-    description: Setzt den Ladestrom nur im ESP-Modus Automatik (Sensor = 0).
-    mode: restart
-    trigger:
-      - platform: time_pattern
-        seconds: /15
-      - platform: state
-        entity_id:
-          - sensor.wallbox_zielstrom
-          - sensor.wallbox_wallbox_modus
-          - sensor.16-7-0-VerbrauchAktuellW
-    condition:
-      - condition: template
-        value_template: "{{ states('sensor.wallbox_wallbox_modus') | float(-1) | int == 0 }}"
-    action:
-      - service: esphome.wallbox_set_charging_amps_auto
-        data:
-          amps: "{{ states('sensor.wallbox_zielstrom') | int(6) }}"
