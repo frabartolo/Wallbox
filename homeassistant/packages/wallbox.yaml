@@ -12,6 +12,7 @@
 # negativ = Einspeisung → verfügbarer Überschuss für die Wallbox als max(0, −W).
 # Zielstrom: rechnerisch < 6 A → 0 A (kein Mindestladen bei zu wenig Überschuss); sonst min/max begrenzt.
 # input_boolean.wallbox_pv_regelung: aus = keine HA-Übernahme (manuell/ESP-Modi).
+# Template „Wallbox … GUI“: im Automatikmodus mit Regelung = Zielstrom aus HA (inkl. 0 A).
 # „Zaehler Lieferung Wh“: Zählerstand (Wh); optional sensor.wallbox_lieferung_leistung (Ableitung).
 
 input_number:
@@ -92,4 +93,28 @@ template:
           {% set mx = states('input_number.wallbox_max_amps') | int(32) %}
           {% set a = (raw | round(0)) | int %}
           {{ [[mn, a, mx] | sort][1] }}
+          {% endif %}
+
+      - name: "Wallbox Soll-Ladestrom GUI"
+        unique_id: wallbox_gui_soll_ladestrom
+        unit_of_measurement: A
+        device_class: current
+        state: >
+          {% set m = states('sensor.wallbox_wallbox_modus') | float(-1) | int %}
+          {% if m == 0 and is_state('input_boolean.wallbox_pv_regelung', 'on') %}
+            {{ states('sensor.wallbox_zielstrom') | float(0) }}
+          {% else %}
+            {{ states('number.wallbox_wallbox_soll_ladestrom') | float(0) }}
+          {% endif %}
+
+      - name: "Wallbox Ladestrom GUI"
+        unique_id: wallbox_gui_ladestrom
+        unit_of_measurement: A
+        device_class: current
+        state: >
+          {% set m = states('sensor.wallbox_wallbox_modus') | float(-1) | int %}
+          {% if m == 0 and is_state('input_boolean.wallbox_pv_regelung', 'on') %}
+            {{ states('sensor.wallbox_zielstrom') | float(0) }}
+          {% else %}
+            {{ states('sensor.wallbox_wallbox_ladestrom') | float(0) }}
           {% endif %}

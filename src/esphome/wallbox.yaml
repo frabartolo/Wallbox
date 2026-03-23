@@ -187,6 +187,8 @@ button:
       - lambda: |-
           id(wallbox_mode) = 0;
       - component.update: wallbox_mode_sensor
+      - component.update: charging_amps_override
+      - component.update: ds3502_current_amps_sensor
 
 time:
   - platform: sntp

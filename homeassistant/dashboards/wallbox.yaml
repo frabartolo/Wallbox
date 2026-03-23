@@ -28,8 +28,15 @@ views:
         entities:
           - entity: sensor.wallbox_wallbox_modus
             name: Modus (0=Automatik)
+          - entity: sensor.wallbox_soll_ladestrom_gui
+            name: Wallbox Soll-Ladestrom
+          - entity: sensor.wallbox_ladestrom_gui
+            name: Wallbox Ladestrom
+          - type: divider
           - entity: number.wallbox_wallbox_soll_ladestrom
+            name: Soll (ESP, Rohwert)
           - entity: sensor.wallbox_wallbox_ladestrom
+            name: Ladestrom (ESP, Rohwert)
           - entity: sensor.wallbox_wallbox_ladeleistung
           - type: divider
           - entity: button.wallbox_wallbox_automatikmodus

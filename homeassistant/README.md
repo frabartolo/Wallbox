@@ -11,7 +11,7 @@ Die zentrale **`configuration.yaml`** bleibt schlank; fachliche Blöcke liegen u
 | **`automations/wallbox.yaml`** | Überschuss → ESPHome; optional Benachrichtigung „Ladevorgang beendet“ (Scheinleistung unter 2000 VA, 1 min) — `notify.*` anpassen |
 | **`packages/mqtt_volkszaehler.yaml`** | MQTT-Sensoren (Volkszähler / vzlogger) |
 | **`packages/eos.yaml`** | `rest_command` + REST-Sensor für EOS |
-| **`packages/wallbox.yaml`** | Hilfs-Entitäten, `input_boolean.wallbox_pv_regelung`, Template-Sensoren; Automation: **`automations/wallbox.yaml`** |
+| **`packages/wallbox.yaml`** | Hilfs-Entitäten, `input_boolean.wallbox_pv_regelung`, Templates inkl. **`sensor.wallbox_*_ladestrom_gui`** (Anzeige 0 A wie Zielstrom); Automation: **`automations/wallbox.yaml`** |
 | **`dashboards/wallbox.yaml`** | Lovelace-Dashboard „Wallbox“ (optional; `lovelace:` in `configuration.yaml` einbinden) |
 
 ## Einbindung
