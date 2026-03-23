@@ -1,0 +1,24 @@
+# EOS (Energy Optimisation System o. ä.) – REST
+
+rest_command:
+  send_pv_power_to_eos:
+    url: "http://eos:8503/v1/measurement/value"
+    method: put
+    headers:
+      Content-Type: application/json
+    payload: >
+      {
+        "measurement": "pv_power",
+        "value": {{ states('sensor.2-8-0-SolaranlageErzeugungW') }}
+      }
+
+sensor:
+  - platform: rest
+    name: EOS PV Prognose
+    resource: "http://eos:8503/v1/prediction/series?measurement=pv_power"
+    method: GET
+    value_template: >
+      {{ value_json.series[0].value if value_json.series }}
+    scan_interval: 900
+    headers:
+      Content-Type: application/json

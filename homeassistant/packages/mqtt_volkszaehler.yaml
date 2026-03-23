@@ -1,0 +1,44 @@
+# Volkszähler (vzlogger) über MQTT
+# Keine Wallbox-MQTT-Sensoren mehr: Ladestrom/Modus kommen von ESPHome (Native API).
+
+mqtt:
+  - sensor:
+      name: "Zaehler Bezug Wh"
+      unique_id: sensor.1-8-0-ZaehlerBezugWh
+      device_class: energy
+      state_class: total_increasing
+      state_topic: vzlogger/data/chn0/raw
+      value_template: "{{ value_json.value | float | round(1) | abs() }}"
+      unit_of_measurement: "Wh"
+  - sensor:
+      name: "Zaehler Lieferung Wh"
+      unique_id: sensor.2-8-0-ZaehlerLieferungWh
+      device_class: energy
+      state_topic: vzlogger/data/chn1/raw
+      state_class: total_increasing
+      value_template: "{{ value_json.value | float | round(1) | abs() }}"
+      unit_of_measurement: "Wh"
+  - sensor:
+      name: "Verbrauch Aktuell"
+      unique_id: sensor.16-7-0-VerbrauchAktuellW
+      device_class: power
+      state_topic: vzlogger/data/chn2/raw
+      state_class: measurement
+      value_template: "{{ value_json.value | float | round(1) }}"
+      unit_of_measurement: "W"
+  - sensor:
+      name: "Solaranlage Erzeugung aktuell"
+      unique_id: sensor.2-8-0-SolaranlageErzeugungW
+      device_class: power
+      state_topic: vzlogger/data/chn3/raw
+      state_class: measurement
+      value_template: "{{ value_json.value | float | round(1) }}"
+      unit_of_measurement: "W"
+  - sensor:
+      name: "Lieferung aktuell"
+      unique_id: sensor.16-7-0-LieferungAktuellW
+      device_class: power
+      state_topic: vzlogger/data/chn4/raw
+      state_class: measurement
+      value_template: "{{ value_json.value | float | round(1) }}"
+      unit_of_measurement: "W"

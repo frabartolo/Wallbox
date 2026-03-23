@@ -1,0 +1,25 @@
+# Beispiel für die zentrale /config/configuration.yaml
+# ------------------------------------------------------------------
+# Inhalt aus deiner bisherigen Datei übernehmen und alles, was jetzt unter
+# packages/ liegt (MQTT, Wallbox, EOS), aus dieser Datei ENTFERNEN.
+#
+# Pflicht: genau ein Block homeassistant: mit packages – siehe unten.
+# ------------------------------------------------------------------
+
+default_config:
+
+homeassistant:
+  packages: !include_dir_named packages/
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+tts:
+  - platform: google_translate
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+bluetooth:

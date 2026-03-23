@@ -1,47 +1,38 @@
-# Home Assistant: Wallbox-Überschuss
+# Home Assistant: Paketstruktur
 
-Das Paket liegt **neben** der `configuration.yaml`, typisch:
+Die zentrale **`configuration.yaml`** bleibt schlank; fachliche Blöcke liegen unter **`/config/packages/`**.
 
-```text
-/config/configuration.yaml
-/config/packages/wallbox.yaml
-```
+## Dateien im Repository
+
+| Datei | Inhalt |
+|--------|--------|
+| **`configuration.example.yaml`** | Vorbild für die **root** `configuration.yaml` (ohne MQTT/EOS/Wallbox-Logik) |
+| **`configuration_wallbox.fragment.yaml`** | Nur der Block `homeassistant:` mit `packages` (falls du ihn separat einfügen willst) |
+| **`packages/mqtt_volkszaehler.yaml`** | MQTT-Sensoren (Volkszähler / vzlogger) |
+| **`packages/eos.yaml`** | `rest_command` + REST-Sensor für EOS |
+| **`packages/wallbox.yaml`** | Überschuss → ESPHome (`set_charging_amps_auto`), Templates, Automation |
 
 ## Einbindung
 
-In **`configuration.yaml`** muss **ein** Block `homeassistant:` existieren, z. B.:
+Root **`/config/configuration.yaml`** muss u. a. enthalten:
 
 ```yaml
 homeassistant:
   packages: !include_dir_named packages/
 ```
 
-(Vorlage: **`configuration_wallbox.fragment.yaml`** im Repository.)
+Alle bisherigen Definitionen zu **MQTT (Volkszähler)**, **EOS** und **Wallbox** aus der großen `configuration.yaml` **entfernen**, sobald die gleichen Inhalte als Pakete unter `/config/packages/` liegen – sonst doppelte Entitäten / Konflikte.
 
-## Messgröße (Volkszähler / MQTT)
+**Hinweis:** Die alten MQTT-Einträge *„Wallbox Ladeleistung“ / „Wallbox Modus“* auf `wallbox/state` sind **entfernt** – dieselben Informationen kommen von **ESPHome** (und würden sonst doppelt erscheinen).
 
-Für die **Momentanleistung** wird **`sensor.16-7-0-VerbrauchAktuellW`** verwendet (OBIS 1-0:16.7.0).  
-**Negative Werte** bedeuten Einspeisung; daraus wird der **verfügbare Überschuss in Watt** berechnet: `max(0, -Leistung)`.
+## Messgröße Wallbox-Paket
 
-**`sensor.2-8-0-ZaehlerLieferungWh`** ist ein **Zählerstand** (Energie in Wh), kein Momentanwert – für diese direkte Wallbox-Regelung **nicht** geeignet (höchstens über eine Ableitung; Standard ist der Leistungssensor oben).
+Siehe Kommentar in `packages/wallbox.yaml`: **`sensor.16-7-0-VerbrauchAktuellW`**, negatives W = Einspeisung → `max(0,-w)`.
 
-Die **MQTT-Sensoren** für den Stromzähler bleiben in der `configuration.yaml` – sie liefern die Daten für dieses Paket.
+## Skript
 
-## Nach dem Kopieren
-
-1. `packages/wallbox.yaml` aus dem Repo nach `/config/packages/wallbox.yaml` legen (oder aktualisieren).  
-2. **Konfiguration prüfen** & HA **neu starten**.  
-3. Entity-ID **Wallbox Modus** (ESPHome) prüfen – in der Automation steht `sensor.wallbox_wallbox_modus`; bei Abweichung anpassen.
+`scripts/update-homeassistant-esphome.sh` kopiert **`homeassistant/packages/*.yaml`** nach `~/homeassistant/packages/` (und ESPHome nach `~/homeassistant/esphome/`).
 
 ## Service
 
 `esphome.wallbox_set_charging_amps_auto` (ESPHome-Gerät `wallbox` verbunden).
-
-## Verhalten
-
-- **Modus 0 (Automatik)** auf dem ESP: HA setzt den Strom (ca. alle **15 s** und bei Änderung von Zielstrom, Modus oder **Momentanleistung**).
-- **Andere Modi:** Service wird vom ESP ignoriert.
-
-## Hilfsmittel
-
-- **Eingaben** (Min/Max-Strom, 1×230 V / 3×230 V, Spannung): Umrechnung W → A, begrenzt auf Min/Max.

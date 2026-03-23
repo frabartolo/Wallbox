@@ -23,4 +23,4 @@ Hintergrund zur **linearen** Strom↔Wiper-Zuordnung und optionalen Referenz-PDF
 
 ## Home Assistant (Überschussladen)
 
-Paket mit Automation und Templates: **`homeassistant/packages/wallbox.yaml`** — Anleitung: **`homeassistant/README.md`**. Ohne bestehenden `homeassistant:`-Block: **`homeassistant/configuration_wallbox.fragment.yaml`** als Vorlage. Service: `set_charging_amps_auto` (nur Modus Automatik).
+Home Assistant: aufgeteilte Pakete unter **`homeassistant/packages/`** (MQTT/Volkszähler, EOS, Wallbox) — Anleitung: **`homeassistant/README.md`**. Zentrale Konfiguration: **`homeassistant/configuration.example.yaml`**. Service: `set_charging_amps_auto` (nur Modus Automatik).
