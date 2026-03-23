@@ -3,6 +3,9 @@
 # default_config: oder am Ende der Datei). Es darf nur EIN Block
 # "homeassistant:" existieren – wenn du schon einen hast, nur die Zeile
 # "packages: ..." dort hinein kopieren (gleiche Einrückung wie die anderen Keys).
+#
+# packages/ liegt auf derselben Ebene wie configuration.yaml, z. B.:
+#   /config/packages/wallbox.yaml
 # ---------------------------------------------------------------------------
 
 homeassistant:

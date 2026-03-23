@@ -1,12 +1,13 @@
 # Wallbox: PV-Überschuss → Ladestrom (ESPHome-Service set_charging_amps_auto)
 #
-# Nach /config/packages/wallbox.yaml kopieren.
-# Voraussetzung: configuration.yaml enthält:
+# Liegt unterhalb der configuration.yaml, z. B. /config/packages/wallbox.yaml
+# Voraussetzung in configuration.yaml:
 #   homeassistant:
 #     packages: !include_dir_named packages/
 #
-# Überschuss: grob Solar-Leistung minus Hausverbrauch (Volkszähler/MQTT).
-# Entity-IDs unter Entwicklerwerkzeuge → Zustände prüfen und bei Bedarf anpassen.
+# Überschuss-Leistung (W): Stromzähler-Momentanwert sensor.16-7-0-VerbrauchAktuellW
+# (MQTT / Volkszähler). Negative Werte = Einspeisung/Überschuss → für die Wallbox
+# als positiver Watt-Wert verwendet: max(0, -Momentanleistung).
 
 input_number:
   wallbox_min_amps:
@@ -44,20 +45,17 @@ input_select:
 
 template:
   - sensor:
-      # Volkszähler: Solar aktuell − Verbrauch aktuell (nur wenn >= 0).
-      # Typische IDs aus den Namen – bitte in HA gegenprüfen:
-      #   "Solaranlage Erzeugung aktuell" → sensor.solaranlage_erzeugung_aktuell
-      #   "Verbrauch Aktuell"             → sensor.verbrauch_aktuell
-      # Alternative: direkt sensor.lieferung_aktuell (Netzeinspeisung), falls der Wert besser passt.
+      # Momentanleistung (W): negativ = verfügbarer Überschuss → -w nach positiv wandeln.
+      # sensor.2-8-0-ZaehlerLieferungWh ist ein Zählerstand (Wh), kein Momentanwert – für
+      # diese Regelung ungeeignet (außer über Ableitung; hier bewusst der Leistungssensor).
       - name: "Wallbox PV Rohleistung"
         unique_id: wallbox_pv_rohleistung
         unit_of_measurement: W
         device_class: power
         state_class: measurement
         state: >
-          {% set solar = states('sensor.solaranlage_erzeugung_aktuell') | float(0) %}
-          {% set verb = states('sensor.verbrauch_aktuell') | float(0) %}
-          {{ max(0, solar - verb) }}
+          {% set w = states('sensor.16-7-0-VerbrauchAktuellW') | float(0) %}
+          {{ max(0, -w) }}
 
       - name: "Wallbox Zielstrom"
         unique_id: wallbox_zielstrom_a
@@ -87,6 +85,7 @@ automation:
         entity_id:
           - sensor.wallbox_zielstrom
           - sensor.wallbox_wallbox_modus
+          - sensor.16-7-0-VerbrauchAktuellW
     condition:
       - condition: template
         value_template: "{{ states('sensor.wallbox_wallbox_modus') | float(-1) | int == 0 }}"

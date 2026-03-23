@@ -1,57 +1,47 @@
 # Home Assistant: Wallbox-Überschuss
 
-## Variante A – `packages/` (neu anlegen)
+Das Paket liegt **neben** der `configuration.yaml`, typisch:
 
-### 1) Ordner und Paket
-
-```bash
-mkdir -p /config/packages
-cp wallbox.yaml /config/packages/wallbox.yaml
+```text
+/config/configuration.yaml
+/config/packages/wallbox.yaml
 ```
 
-(Quelle: `homeassistant/packages/wallbox.yaml` aus diesem Repository.)
+## Einbindung
 
-### 2) `configuration.yaml` – Block `homeassistant:`
-
-Wenn **noch kein** `homeassistant:` existiert, diesen Block **einmal** ergänzen (z. B. direkt unter `default_config:`). Inhalt siehe **`configuration_wallbox.fragment.yaml`** im Repo – minimal:
+In **`configuration.yaml`** muss **ein** Block `homeassistant:` existieren, z. B.:
 
 ```yaml
 homeassistant:
   packages: !include_dir_named packages/
 ```
 
-**Nur ein** Top-Level-Block `homeassistant:` – wenn du später weitere Einträge brauchst (`country`, `time_zone`, …), in **denselben** Block schreiben.
+(Vorlage: **`configuration_wallbox.fragment.yaml`** im Repository.)
 
-### 3) Konfiguration prüfen & Neustart
+## Messgröße (Volkszähler / MQTT)
 
-### 4) Entity-IDs prüfen
+Für die **Momentanleistung** wird **`sensor.16-7-0-VerbrauchAktuellW`** verwendet (OBIS 1-0:16.7.0).  
+**Negative Werte** bedeuten Einspeisung; daraus wird der **verfügbare Überschuss in Watt** berechnet: `max(0, -Leistung)`.
 
-- **Überschuss:** Das Paket nutzt `sensor.solaranlage_erzeugung_aktuell` und `sensor.verbrauch_aktuell` (aus deinen MQTT-Namen). Unter **Entwicklerwerkzeuge → Zustände** gegenprüfen; bei abweichenden IDs die `state:`-Zeile bei **Wallbox PV Rohleistung** anpassen.
-- **ESPHome-Modus:** Automation nutzt `sensor.wallbox_wallbox_modus`. Wenn die ID anders lautet, in der Automation unter `entity_id` und in der **Bedingung** anpassen.
+**`sensor.2-8-0-ZaehlerLieferungWh`** ist ein **Zählerstand** (Energie in Wh), kein Momentanwert – für diese direkte Wallbox-Regelung **nicht** geeignet (höchstens über eine Ableitung; Standard ist der Leistungssensor oben).
 
-### 5) Service
+Die **MQTT-Sensoren** für den Stromzähler bleiben in der `configuration.yaml` – sie liefern die Daten für dieses Paket.
 
-`esphome.wallbox_set_charging_amps_auto` (Gerät muss in HA eingebunden sein).
+## Nach dem Kopieren
+
+1. `packages/wallbox.yaml` aus dem Repo nach `/config/packages/wallbox.yaml` legen (oder aktualisieren).  
+2. **Konfiguration prüfen** & HA **neu starten**.  
+3. Entity-ID **Wallbox Modus** (ESPHome) prüfen – in der Automation steht `sensor.wallbox_wallbox_modus`; bei Abweichung anpassen.
+
+## Service
+
+`esphome.wallbox_set_charging_amps_auto` (ESPHome-Gerät `wallbox` verbunden).
 
 ## Verhalten
 
-- **Modus 0 (Automatik)** auf dem ESP: HA setzt den Strom (ca. alle **15 s** und bei Änderung).
+- **Modus 0 (Automatik)** auf dem ESP: HA setzt den Strom (ca. alle **15 s** und bei Änderung von Zielstrom, Modus oder **Momentanleistung**).
 - **Andere Modi:** Service wird vom ESP ignoriert.
-
-## Hinweise zu deiner `configuration.yaml`
-
-- **YAML unter `mqtt`:** Der Block für „Wallbox Ladeleistung“ / „Wallbox Modus“ ist falsch eingerückt (`- sensor:` mit zusätzlichem `- name:`). Korrekt ist dieselbe Form wie bei den anderen Sensoren, z. B.:
-
-  ```yaml
-      - sensor:
-          name: "Wallbox Ladeleistung"
-          state_topic: "wallbox/state"
-          ...
-  ```
-
-  Wenn du die Wallbox über **ESPHome** anbindest, entfallen diese MQTT-Sensoren meist – sonst **doppelte** Entitäten / Namenskollision mit „Wallbox Modus“.
 
 ## Hilfsmittel
 
-- **Eingaben** (Min/Max-Strom, 1×230 V / 3×230 V, Spannung) steuern Watt → Ampere.
-- Näherung: \(I \approx P / (U \times \text{Phasen})\), begrenzt auf Min/Max.
+- **Eingaben** (Min/Max-Strom, 1×230 V / 3×230 V, Spannung): Umrechnung W → A, begrenzt auf Min/Max.
