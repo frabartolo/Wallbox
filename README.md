@@ -1,14 +1,21 @@
-# ESP32 Wallbox Controller
+# ESP8266 Wallbox Controller (ESPHome)
 
-Dieses Projekt steuert die Ladeleistung einer analogen EVSE (z.B. AnalogEVSE) über ein digitales Potentiometer (DS3502) und bietet:
-- REST API zur Steuerung
-- Web-Interface zur Anzeige und Override
-- PV-abhängige Automatik
+Steuert die Ladeleistung einer analogen EVSE (z. B. AnalogEVSE) über ein digitales Potentiometer (DS3502, I2C), die **ESPHome Native API** (Home Assistant) und optional die **Web-GUI** im lokalen Netz (`http://<Geräte-IP>/`, Port 80).
+
+- Steuerung aus Home Assistant (Entitäten + optional `set_charging_amps`)
+- Browser: Status und Override über den eingebauten ESPHome-Webserver
+- PV-abhängige Automatik auf dem Gerät (Modus **Automatik**, Test über Sensor „Mocked PV Power“)
 
 ## Hardware
-- ESP32
+
+- ESP8266 (Konfiguration: Wemos D1 mini lite)
 - Adafruit DS3502 (I2C)
-- AnalogEVSE Platine mit Widerstandssteuerung
+- AnalogEVSE-Platine mit Widerstandssteuerung
 
 ## Konfiguration
-- WLAN-Daten direkt in `main.ino` eintragen
+
+1. Verzeichnis `src/esphome/`
+2. `secrets.yaml` aus `secrets.yaml.example` anlegen und alle Platzhalter setzen (siehe `.gitignore`: `secrets.yaml` nicht committen). API-Key: `openssl rand -base64 32` → `api_encryption_key` (ESPHome 2026.1+). Beim Einbinden in Home Assistant denselben Schlüssel angeben.
+3. `esphome run wallbox.yaml` (oder über das ESPHome-Dashboard).
+
+Hintergrund zur **linearen** Strom↔Wiper-Zuordnung und optionalen Referenz-PDFs: siehe `Referenz/README.md`.

@@ -18,27 +18,31 @@ esp8266:
   board: d1_mini_lite
 
 substitutions:
-  default_charge_amps: '12'
+  default_charge_amps: "12"
 
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
+  # Schwächstes akzeptiertes WLAN; bei altem Router ggf. WPA
+  min_auth_mode: WPA2
   ap:
     ssid: "Wallbox Fallback Hotspot"
-    password: "PRjHPY18z5MC"
+    password: !secret fallback_ap_password
 
 logger:
-  level: DEBUG
+  level: INFO
 
 ota:
   platform: esphome
-  password: "2db4bb5b7fffc371c432344fb6881f73"
+  password: !secret ota_password
 
+# Lokale Web-Oberfläche (Status, Entitäten, Steuerung im Browser im LAN)
 web_server:
   port: 80
-  
+
 api:
-  password: "kAnmZjHuXtWkVaz1ctOAThgK+BUfLDeN7vBPCyhiMKA="
+  encryption:
+    key: !secret api_encryption_key
   services:
     - service: set_charging_amps
       variables:
@@ -46,7 +50,7 @@ api:
       then:
         - number.set:
             id: charging_amps_override
-            value: !lambda 'return amps;'
+            value: !lambda "return amps;"
 
 i2c:
   id: bus_a
@@ -59,15 +63,16 @@ ds3502_potentiometer:
   i2c_id: bus_a
   address: 0x28
 
+# wallbox_mode: 0=Automatik (PV-Logik per Zeit), 1=Maximal, 2=Nur Überschuss (Default-Strom), 3=Manuell (Number/API, keine PV-Cron-Überschreibung)
 globals:
   - id: wallbox_mode
     type: int
     restore_value: false
-    initial_value: '0'
+    initial_value: "0"
   - id: current_amps_setting
     type: int
     restore_value: false
-    initial_value: '12'
+    initial_value: "12"
 
 number:
   - platform: template
@@ -79,11 +84,11 @@ number:
     unit_of_measurement: "A"
     set_action:
       - lambda: |-
-          int amps = (int)x;
+          int amps = (int) x;
           if (amps < 6) amps = 6;
           id(current_amps_setting) = amps;
-          id(wallbox_mode) = 0;
-          id(ds3502_output).set_level( (float)amps / 64.0 );
+          id(wallbox_mode) = 3;
+          id(ds3502_output).set_level((float) amps / 64.0f);
       - component.update: ds3502_current_amps_sensor
 
 output:
@@ -92,10 +97,10 @@ output:
     type: float
     write_action:
       - lambda: |-
-          int wiper_val = (int)(state * 127.0);
+          int wiper_val = (int) (state * 127.0f);
           if (wiper_val < 0) wiper_val = 0;
           if (wiper_val > 127) wiper_val = 127;
-          
+
           if (id(my_ds3502) != nullptr && id(my_ds3502)->set_wiper(wiper_val)) {
             ESP_LOGI("ds3502", "Wiper set successfully to %d", wiper_val);
           } else {
@@ -110,7 +115,7 @@ sensor:
     accuracy_decimals: 0
     lambda: |-
       return id(current_amps_setting);
-  
+
   - platform: template
     name: "Wallbox Modus"
     id: wallbox_mode_sensor
@@ -122,8 +127,7 @@ sensor:
     name: "Mocked PV Power"
     id: mocked_pv_power
     unit_of_measurement: "W"
-    
-    
+
 button:
   - platform: template
     name: "Maximal Laden jetzt"
@@ -132,8 +136,9 @@ button:
       - lambda: |-
           id(wallbox_mode) = 1;
           id(current_amps_setting) = 32;
-          id(ds3502_output).set_level( (float)id(current_amps_setting) / 64.0 );
-          
+          id(ds3502_output).set_level((float) id(current_amps_setting) / 64.0f);
+      - component.update: ds3502_current_amps_sensor
+
   - platform: template
     name: "Nur Überschussladen"
     id: charge_surplus_button
@@ -141,38 +146,43 @@ button:
       - lambda: |-
           id(wallbox_mode) = 2;
           id(current_amps_setting) = ${default_charge_amps};
-          id(ds3502_output).set_level( (float)id(current_amps_setting) / 64.0 );
+          id(ds3502_output).set_level((float) id(current_amps_setting) / 64.0f);
+      - component.update: ds3502_current_amps_sensor
 
   - platform: template
     name: "Automatikmodus"
     on_press:
       - lambda: |-
           id(wallbox_mode) = 0;
-          
+      - component.update: wallbox_mode_sensor
+
 time:
   - platform: sntp
     id: sntp_time
-    # Automatisierungs-Trigger (jede Minute) befindet sich nun hier
     on_time:
       - cron: "0 * * * * *"
         then:
           - if:
               condition:
-                - lambda: 'return id(wallbox_mode) == 0;'
+                - lambda: "return id(wallbox_mode) == 0;"
               then:
                 - if:
                     condition:
-                      - lambda: 'return id(mocked_pv_power).state < 100;'
+                      - lambda: "return id(mocked_pv_power).state < 100;"
                     then:
                       - lambda: |-
                           ESP_LOGD("automode", "PV-Leistung zu gering, wechsle zu Maximaler Ladeleistung.");
                           id(current_amps_setting) = 32;
-                          id(ds3502_output).set_level( (float)id(current_amps_setting) / 64.0 );
+                          id(ds3502_output).set_level((float) id(current_amps_setting) / 64.0f);
+                      - component.update: ds3502_current_amps_sensor
                 - if:
                     condition:
-                      - lambda: 'return id(mocked_pv_power).state >= 100 && id(current_amps_setting) > ${default_charge_amps};'
+                      - lambda: |-
+                          return id(mocked_pv_power).state >= 100 &&
+                                 id(current_amps_setting) > ${default_charge_amps};
                     then:
                       - lambda: |-
                           ESP_LOGD("automode", "PV-Leistung verfügbar, wechsle zurück zu Überschussladen.");
                           id(current_amps_setting) = ${default_charge_amps};
-                          id(ds3502_output).set_level( (float)id(current_amps_setting) / 64.0 );
+                          id(ds3502_output).set_level((float) id(current_amps_setting) / 64.0f);
+                      - component.update: ds3502_current_amps_sensor
