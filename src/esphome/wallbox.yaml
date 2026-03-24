@@ -186,6 +186,49 @@ sensor:
       if (isnan(s)) return 0.0f;
       return s / 1000.0f;
 
+# Lesbare Modus-Anzeige + drei „aktiv“-Indikatoren (Web-UI: Buttons haben keinen Zustand)
+text_sensor:
+  - platform: template
+    name: "Betriebsart"
+    id: wallbox_betriebsart_text
+    update_interval: 1s
+    lambda: |-
+      switch (id(wallbox_mode)) {
+        case 0:
+          return std::string("Automatik (Regelung Home Assistant)");
+        case 1:
+          return std::string("Maximal laden");
+        case 2:
+          return std::string("Nur Überschussladen");
+        case 3:
+          return std::string("Manuell (Soll-Ladestrom)");
+        default:
+          return std::string("?");
+      }
+
+binary_sensor:
+  - platform: template
+    name: "Status Automatikmodus"
+    id: status_mode_auto
+    device_class: running
+    update_interval: 1s
+    lambda: |-
+      return id(wallbox_mode) == 0;
+  - platform: template
+    name: "Status Maximal laden"
+    id: status_mode_max
+    device_class: running
+    update_interval: 1s
+    lambda: |-
+      return id(wallbox_mode) == 1;
+  - platform: template
+    name: "Status Nur Überschussladen"
+    id: status_mode_surplus
+    device_class: running
+    update_interval: 1s
+    lambda: |-
+      return id(wallbox_mode) == 2;
+
 button:
   - platform: template
     name: "Maximal Laden jetzt"
