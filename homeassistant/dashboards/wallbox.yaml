@@ -1,7 +1,9 @@
 # Dashboard „Wallbox“ – nach /config/dashboards/wallbox.yaml kopieren und in configuration.yaml
 # unter lovelace: dashboards: … einbinden (siehe configuration.example.yaml).
-# Entity-IDs des ESPHome-Geräts ggf. unter Einstellungen → Entwicklerwerkzeuge prüfen
-# (z. B. number.wallbox_wallbox_soll_ladestrom).
+#
+# „Entität nicht gefunden“: Entwicklerwerkzeuge → Zustände → nach „wallbox“ suchen und
+# die hier eingetragenen entity_id-Zeilen anpassen. ESPHome: oft wallbox_wallbox_* oder nur wallbox_*.
+# MQTT: sensor.verbrauch_aktuell aus packages/mqtt_volkszaehler.yaml (Integration muss laufen).
 
 title: Wallbox
 views:
@@ -16,7 +18,7 @@ views:
           - entity: input_boolean.wallbox_pv_regelung
             name: Regelung aktiv
           - entity: sensor.wallbox_netz_leistung
-            name: Netz-Leistung (Soll 0, Einheit auto)
+            name: Netz-Leistung (Soll 0 W)
           - entity: sensor.wallbox_ziel_ladeleistung
             name: Ziel-Ladeleistung (Regler)
           - entity: sensor.wallbox_soll_ladeleistung

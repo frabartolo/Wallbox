@@ -4,7 +4,7 @@
 # Soll-Ladeleistung (W): max(0, min(P_max, P_Lade_Schein - w)) mit w = Verbrauch aktuell,
 # P_Lade = sensor.wallbox_wallbox_ladeleistung (Shelly/ESPHome), P_max = max_A * U * Phasen.
 # Daraus Zielstrom (A); < 6 A → 0 A an den ESP.
-# Anzeigen: Leistung automatisch W (<1000) oder kW (|P|≥1000), siehe Template unit_of_measurement.
+# Anzeigen: Leistung in W (festes unit_of_measurement – dynamische Einheit sprengt ältere HA-Versionen).
 
 input_number:
   wallbox_min_amps:
@@ -93,49 +93,25 @@ template:
 
       - name: "Wallbox Netz-Leistung"
         unique_id: wallbox_netz_leistung_kw
+        unit_of_measurement: W
         device_class: power
         state_class: measurement
-        unit_of_measurement: >
-          {% set v = states('sensor.verbrauch_aktuell') | float(0) %}
-          {{ 'kW' if (v | abs) >= 1000 else 'W' }}
         state: >
-          {% set v = states('sensor.verbrauch_aktuell') | float(0) %}
-          {% if (v | abs) >= 1000 %}
-            {{ (v / 1000) | round(2) }}
-          {% else %}
-            {{ v | round(0) }}
-          {% endif %}
+          {{ (states('sensor.verbrauch_aktuell') | float(0)) | round(0) }}
 
       - name: "Wallbox Ziel-Ladeleistung"
         unique_id: wallbox_ziel_ladeleistung_kw
+        unit_of_measurement: W
         device_class: power
         state_class: measurement
-        unit_of_measurement: >
-          {% set v = states('sensor.wallbox_pv_rohleistung') | float(0) %}
-          {{ 'kW' if (v | abs) >= 1000 else 'W' }}
         state: >
-          {% set v = states('sensor.wallbox_pv_rohleistung') | float(0) %}
-          {% if (v | abs) >= 1000 %}
-            {{ (v / 1000) | round(2) }}
-          {% else %}
-            {{ v | round(0) }}
-          {% endif %}
+          {{ (states('sensor.wallbox_pv_rohleistung') | float(0)) | round(0) }}
 
       - name: "Wallbox Soll-Ladeleistung"
         unique_id: wallbox_gui_soll_kw
+        unit_of_measurement: W
         device_class: power
         state_class: measurement
-        unit_of_measurement: >
-          {% set u = states('input_number.wallbox_spannung_effektiv') | float(230) %}
-          {% set ph = 3 if is_state('input_select.wallbox_anschluss','3x230V') else 1 %}
-          {% set m = states('sensor.wallbox_wallbox_modus') | float(-1) | int %}
-          {% if m == 0 and is_state('input_boolean.wallbox_pv_regelung', 'on') %}
-            {% set i = states('sensor.wallbox_zielstrom') | float(0) %}
-          {% else %}
-            {% set i = states('number.wallbox_wallbox_soll_ladestrom') | float(0) %}
-          {% endif %}
-          {% set v = i * u * ph %}
-          {{ 'kW' if (v | abs) >= 1000 else 'W' }}
         state: >
           {% set u = states('input_number.wallbox_spannung_effektiv') | float(230) %}
           {% set ph = 3 if is_state('input_select.wallbox_anschluss','3x230V') else 1 %}
@@ -145,40 +121,20 @@ template:
           {% else %}
             {% set i = states('number.wallbox_wallbox_soll_ladestrom') | float(0) %}
           {% endif %}
-          {% set v = i * u * ph %}
-          {% if (v | abs) >= 1000 %}
-            {{ (v / 1000) | round(2) }}
-          {% else %}
-            {{ v | round(0) }}
-          {% endif %}
+          {{ (i * u * ph) | round(0) }}
 
       - name: "Wallbox Ist-Ladeleistung"
         unique_id: wallbox_gui_ist_kw
+        unit_of_measurement: W
         device_class: power
         state_class: measurement
-        unit_of_measurement: >
-          {% set raw = states('sensor.wallbox_wallbox_ladeleistung') %}
-          {% set u = states('input_number.wallbox_spannung_effektiv') | float(230) %}
-          {% set ph = 3 if is_state('input_select.wallbox_anschluss','3x230V') else 1 %}
-          {% if raw not in ['unknown', 'unavailable', 'none', ''] %}
-            {% set v = raw | float(0) %}
-          {% else %}
-            {% set i = states('sensor.wallbox_wallbox_ladestrom') | float(0) %}
-            {% set v = i * u * ph %}
-          {% endif %}
-          {{ 'kW' if (v | abs) >= 1000 else 'W' }}
         state: >
           {% set raw = states('sensor.wallbox_wallbox_ladeleistung') %}
           {% set u = states('input_number.wallbox_spannung_effektiv') | float(230) %}
           {% set ph = 3 if is_state('input_select.wallbox_anschluss','3x230V') else 1 %}
           {% if raw not in ['unknown', 'unavailable', 'none', ''] %}
-            {% set v = raw | float(0) %}
+            {{ (raw | float(0)) | round(0) }}
           {% else %}
             {% set i = states('sensor.wallbox_wallbox_ladestrom') | float(0) %}
-            {% set v = i * u * ph %}
-          {% endif %}
-          {% if (v | abs) >= 1000 %}
-            {{ (v / 1000) | round(2) }}
-          {% else %}
-            {{ v | round(0) }}
+            {{ (i * u * ph) | round(0) }}
           {% endif %}
