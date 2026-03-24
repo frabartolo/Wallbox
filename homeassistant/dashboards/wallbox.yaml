@@ -15,29 +15,36 @@ views:
         entities:
           - entity: input_boolean.wallbox_pv_regelung
             name: Regelung aktiv
-          - entity: sensor.wallbox_zielstrom
-          - entity: sensor.wallbox_pv_rohleistung
-          - entity: sensor.verbrauch_aktuell
+          - entity: sensor.wallbox_netz_leistung
+            name: Netz-Leistung (Soll 0, Einheit auto)
+          - entity: sensor.wallbox_ziel_ladeleistung
+            name: Ziel-Ladeleistung (Regler)
+          - entity: sensor.wallbox_soll_ladeleistung
+            name: Soll-Ladeleistung
+          - entity: sensor.wallbox_ist_ladeleistung
+            name: Ist-Ladeleistung
           - entity: input_number.wallbox_min_amps
           - entity: input_number.wallbox_max_amps
           - entity: input_number.wallbox_spannung_effektiv
           - entity: input_select.wallbox_anschluss
+      - type: entities
+        title: Technik (A / W für ESP)
+        show_header_toggle: false
+        entities:
+          - entity: sensor.wallbox_zielstrom
+          - entity: sensor.wallbox_pv_rohleistung
       - type: entities
         title: Wallbox-Gerät (ESPHome)
         show_header_toggle: false
         entities:
           - entity: sensor.wallbox_wallbox_modus
             name: Modus (0=Automatik)
-          - entity: sensor.wallbox_soll_ladestrom_gui
-            name: Wallbox Soll-Ladestrom
-          - entity: sensor.wallbox_ladestrom_gui
-            name: Wallbox Ladestrom
-          - type: divider
           - entity: number.wallbox_wallbox_soll_ladestrom
-            name: Soll (ESP, Rohwert)
+            name: Soll-Ladestrom (ESP, A)
           - entity: sensor.wallbox_wallbox_ladestrom
-            name: Ladestrom (ESP, Rohwert)
+            name: Ladestrom (ESP, A)
           - entity: sensor.wallbox_wallbox_ladeleistung
+            name: Ladeleistung Roh (Shelly)
           - type: divider
           - entity: button.wallbox_wallbox_automatikmodus
           - entity: button.wallbox_wallbox_maximal_laden_jetzt

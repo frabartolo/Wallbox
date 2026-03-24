@@ -1,7 +1,7 @@
 # Wallbox: PV-Überschuss → ESPHome (siehe packages/wallbox.yaml für Sensoren/Hilfsgrößen).
 # Einbindung in configuration.yaml: automation: !include_dir_merge_list automations/
 #
-# Kein periodischer Trigger: nur bei geändertem Zielstrom (z. B. 0↔6A) oder Modus/Regelungs-Schalter.
+# Kein periodischer Trigger: bei Änderung von Zielstrom, Soll-Leistung (W), Netz (verbrauch_aktuell), Ist-Ladeleistung, Modus.
 # Ladeleistung: sensor.wallbox_wallbox_ladeleistung = Scheinleistung aus HA (Shelly), siehe ESPHome wallbox.yaml.
 # Benachrichtigungen: for_each-Liste an eigene notify.mobile_app_*-Dienste anpassen (Einstellungen → Dienste).
 
@@ -13,6 +13,9 @@
     - platform: state
       entity_id:
         - sensor.wallbox_zielstrom
+        - sensor.wallbox_pv_rohleistung
+        - sensor.verbrauch_aktuell
+        - sensor.wallbox_wallbox_ladeleistung
         - sensor.wallbox_wallbox_modus
         - input_boolean.wallbox_pv_regelung
   condition:

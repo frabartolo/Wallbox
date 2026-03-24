@@ -11,7 +11,7 @@ Die zentrale **`configuration.yaml`** bleibt schlank; fachliche Blöcke liegen u
 | **`automations/wallbox.yaml`** | Überschuss → ESPHome; optional Benachrichtigung „Ladevorgang beendet“ (Scheinleistung unter 2000 VA, 1 min) — `notify.*` anpassen |
 | **`packages/mqtt_volkszaehler.yaml`** | MQTT-Sensoren (Volkszähler / vzlogger) |
 | **`packages/eos.yaml`** | `rest_command` + REST-Sensor für EOS |
-| **`packages/wallbox.yaml`** | Hilfs-Entitäten, `input_boolean.wallbox_pv_regelung`, Templates inkl. **`sensor.wallbox_*_ladestrom_gui`** (Anzeige 0 A wie Zielstrom); Automation: **`automations/wallbox.yaml`** |
+| **`packages/wallbox.yaml`** | Regelung: `verbrauch_aktuell` → 0, Stellgröße Ladeleistung; Anzeige **W** oder **kW** je nach Größe (Schwelle 1000 W); Automation: **`automations/wallbox.yaml`** |
 | **`dashboards/wallbox.yaml`** | Lovelace-Dashboard „Wallbox“ (optional; `lovelace:` in `configuration.yaml` einbinden) |
 
 ## Einbindung
@@ -33,7 +33,7 @@ Unter **`/config/automations/`** liegen beliebig viele `.yaml`-Dateien; jede ent
 
 ## Messgröße Wallbox-Paket
 
-Regelung über **`sensor.verbrauch_aktuell`** (MQTT „Verbrauch Aktuell“, OBIS 16.7.0): negatives W = Einspeisung → nutzbarer Überschuss `max(0,-W)`. **Zielstrom:** rechnerisch unter **6 A** → **0 A** (kein Mindestladen). **`input_boolean.wallbox_pv_regelung`:** aus = keine automatische Übergabe an ESP (manuell oder ESP-Modi). Die MQTT-**`unique_id`** ist **nicht** die Entity-ID. Optional: **`sensor.wallbox_lieferung_leistung`** (Ableitung Wh).
+**Regelung:** `sensor.verbrauch_aktuell` soll gegen **0** gehen; **Stellgröße** ist die **Ladeleistung**. Soll-Leistung (W): `max(0, min(P_max, P_Lade − w))` mit `P_Lade` = **`sensor.wallbox_wallbox_ladeleistung`**, `w` = Verbrauch aktuell. Daraus **Zielstrom (A)** für den ESP; unter **6 A** → **0 A**. **Anzeigen** Netz-/Ziel-/Soll-/Ist-Leistung: **automatisch W** unter 1000 W Betrag, ab 1000 W **kW** (2 Dezimalen). **`input_boolean.wallbox_pv_regelung`:** aus = keine Übergabe an ESP.
 
 ## Dashboard „Wallbox“
 
