@@ -16,6 +16,8 @@
         - sensor.wallbox_pv_rohleistung
         - sensor.verbrauch_aktuell
         - sensor.wallbox_wallbox_ladeleistung
+        # Fallback, falls die ESPHome-Kopie der Shelly-Leistung fehlt / veraltet:
+        - sensor.wallbox_ladeleistung
         - sensor.wallbox_wallbox_modus
         - input_boolean.wallbox_pv_regelung
   condition:
