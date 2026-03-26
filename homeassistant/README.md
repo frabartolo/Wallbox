@@ -33,7 +33,7 @@ Unter **`/config/automations/`** liegen beliebig viele `.yaml`-Dateien; jede ent
 
 ## Messgröße Wallbox-Paket
 
-**Regelung:** `sensor.verbrauch_aktuell` soll gegen **0** gehen; **Stellgröße** ist die **Ladeleistung**. **Fest 3×230 V** (kein Anschluss-Schalter): **P ≈ 3 · U_phase · I**. Soll-Leistung (W): `max(0, min(P_max, P_Lade − w))`; **P_Lade** mit Fallback **`sensor.wallbox_ladeleistung`**, falls **`…_wallbox_ladeleistung`** fehlt. **Zielstrom** aus P; unter **`wallbox_min_amps`** → **0 A** (bei 6 A und 230 V je Phase ≈ **4,14 kW** Mindestleistung – **`sensor.wallbox_evse_mindestleistung`**). **Hauptanzeigen** in **kW**. **`input_boolean.wallbox_pv_regelung`:** aus = keine Übergabe an ESP.
+**Regelung:** `sensor.verbrauch_aktuell` soll gegen **0** gehen; **Stellgröße** ist die **Ladeleistung**. **Fest 3×230 V**: **P ≈ 3 · U_phase · I**. Soll-Leistung (W): `max(0, min(P_max, P_Lade − w))`; **P_Lade** mit Fallback **`sensor.wallbox_ladeleistung`**. **Zielstrom:** gerundeter Außenleiterstrom, begrenzt auf **`wallbox_max_amps`**; unter **~0,5 A** Rohwert → **0 A** (Ruhe). **`wallbox_min_amps`** dient u. a. der Anzeige **`sensor.wallbox_evse_mindestleistung`** (typ. 6 A ≈ 4,14 kW), **ohne** die Regelung hart zu sperren. **Hauptanzeigen** in **kW**. **`input_boolean.wallbox_pv_regelung`:** aus = keine Übergabe an ESP.
 
 ## Dashboard „Wallbox“
 

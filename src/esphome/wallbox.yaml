@@ -71,7 +71,7 @@ api:
               id(current_amps_setting) = 0;
               id(ds3502_output).set_level(0.0f);
             } else {
-              if (a < 6) a = 6;
+              if (a < 1) a = 1;
               if (a > 64) a = 64;
               id(current_amps_setting) = a;
               id(ds3502_output).set_level((float) a / 64.0f);

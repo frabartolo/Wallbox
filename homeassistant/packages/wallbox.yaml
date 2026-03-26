@@ -7,7 +7,8 @@
 # Anschluss: fest 3×230 V (Drehstrom); Leistung P ≈ 3 · U_phase · I (vereinfacht, I = Außenleiter/Phase).
 # Regelung: sensor.verbrauch_aktuell soll gegen 0 laufen (Saldo am Zähler). Stellgröße ist die Ladeleistung.
 # P_soll = max(0, min(P_max, P_Lade - w)); P_Lade = Shelly am Wallbox-Zweig (ESPHome-Entität, Fallback siehe unten).
-# Zielstrom aus P_soll; unter wallbox_min_amps → 0 A (typ. 6 A EVSE-Minimum ≈ 4,14 kW bei 3×230 V).
+# Zielstrom aus P_soll: gerundeter Außenleiterstrom, begrenzt auf max_amps. Unter ~0,5 A Rohwert → 0 A (Ruhe).
+# input_number wallbox_min_amps bleibt für Hinweise (z. B. EVSE-Mindestleistung-Sensor), nicht als harte Sperre.
 # Anzeige-Leistungen: kW (Hauptdashboard); intern sensor.wallbox_pv_rohleistung bleibt in W für die Regel.
 
 input_number:
@@ -82,13 +83,12 @@ template:
           {% set ph = 3 %}
           {% set denom = u * ph %}
           {% set raw = (p / denom) if denom > 0 else 0 %}
-          {% set mn = states('input_number.wallbox_min_amps') | int(6) %}
-          {% if raw < mn %}
+          {% set mx = states('input_number.wallbox_max_amps') | int(32) %}
+          {% if raw < 0.5 %}
           0
           {% else %}
-          {% set mx = states('input_number.wallbox_max_amps') | int(32) %}
           {% set a = (raw | round(0)) | int %}
-          {{ [[mn, a, mx] | sort][1] }}
+          {{ [[1, a, mx] | sort][1] }}
           {% endif %}
 
       - name: "Wallbox Maximal möglich kW"
