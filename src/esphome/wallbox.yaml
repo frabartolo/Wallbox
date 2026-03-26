@@ -191,6 +191,7 @@ text_sensor:
   - platform: template
     name: "Betriebsart"
     id: wallbox_betriebsart_text
+    update_interval: 1s
     lambda: |-
       switch (id(wallbox_mode)) {
         case 0:
@@ -206,7 +207,7 @@ text_sensor:
       }
 
 binary_sensor:
-  # Kein update_interval (ESPHome 2026+: bei template nicht mehr erlaubt) – siehe interval unten
+  # Lambda wird in loop() laufend ausgewertet (kein PollingComponent → kein component.update)
   - platform: template
     name: "Status Automatikmodus"
     id: status_mode_auto
@@ -259,15 +260,6 @@ button:
       - component.update: wallbox_mode_sensor
       - component.update: charging_amps_override
       - component.update: ds3502_current_amps_sensor
-
-# Modus-Anzeigen zyklisch neu auswerten (binary_sensor.template hat kein update_interval mehr)
-interval:
-  - interval: 1s
-    then:
-      - component.update: wallbox_betriebsart_text
-      - component.update: status_mode_auto
-      - component.update: status_mode_max
-      - component.update: status_mode_surplus
 
 time:
   - platform: sntp
