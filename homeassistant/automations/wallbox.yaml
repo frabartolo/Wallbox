@@ -1,7 +1,9 @@
 # Wallbox: PV-Überschuss → ESPHome (siehe packages/wallbox.yaml für Sensoren/Hilfsgrößen).
 # Einbindung in configuration.yaml: automation: !include_dir_merge_list automations/
 #
-# Kein periodischer Trigger: bei Änderung von Zielstrom, Soll-Leistung (W), Netz (verbrauch_aktuell), Ist-Ladeleistung, Modus.
+# Nur triggern, wenn sich der Sollstrom (A) ändert oder Automatik ein-/ausgeschaltet wird.
+# Zielstrom hängt bereits von Netz (verbrauch_aktuell) und Shelly ab – extra Trigger darauf würden
+# bei jedem MQTT-Tick esphome_set_charging_amps_auto spammen, obwohl der Ampere-Soll gleich bleibt.
 # Ladeleistung: sensor.wallbox_wallbox_ladeleistung = Scheinleistung aus HA (Shelly), siehe ESPHome wallbox.yaml.
 # Benachrichtigungen: for_each-Liste an eigene notify.mobile_app_*-Dienste anpassen (Einstellungen → Dienste).
 
@@ -13,11 +15,6 @@
     - platform: state
       entity_id:
         - sensor.wallbox_zielstrom
-        - sensor.wallbox_pv_rohleistung
-        - sensor.verbrauch_aktuell
-        - sensor.wallbox_wallbox_ladeleistung
-        # Fallback, falls die ESPHome-Kopie der Shelly-Leistung fehlt / veraltet:
-        - sensor.wallbox_ladeleistung
         - select.wallbox_modus
         - input_boolean.wallbox_pv_regelung
   condition:

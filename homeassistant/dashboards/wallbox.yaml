@@ -53,7 +53,9 @@ views:
           - entity: input_boolean.wallbox_pv_regelung
             name: Regelung aktiv
           - entity: sensor.wallbox_netz_leistung
-            name: Netz (Soll 0 kW)
+            name: Netz-Saldo (kW, vzlogger; + oft Bezug, − Einspeisung)
+          - entity: sensor.wallbox_pv_rohleistung
+            name: Roh-Soll Leistung vor Mindeststrom (W)
           - entity: sensor.wallbox_ziel_ladeleistung
             name: Ziel-Ladeleistung (Regler)
           - entity: sensor.wallbox_soll_ladeleistung

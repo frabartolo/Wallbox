@@ -1,7 +1,11 @@
 # Wallbox: PV / Netz → Ladeleistung (W) → Zielstrom (A) → ESPHome set_charging_amps_auto
 #
+# sensor.verbrauch_aktuell (vzlogger chn2): Konvention prüfen. Üblich: positiv = Netzbezug,
+# negativ = Einspeisung. Formel P_soll = max(0, min(P_max, P_Wallbox - w)) nutzt w so:
+# Bei Einspeisung (w < 0) wird P_soll groß; bei Bezug (w > 0) wird P_soll kleiner/0.
+#
 # Anschluss: fest 3×230 V (Drehstrom); Leistung P ≈ 3 · U_phase · I (vereinfacht, I = Außenleiter/Phase).
-# Regelung: sensor.verbrauch_aktuell (16.7.0) soll gegen 0 laufen. Stellgröße ist die Ladeleistung.
+# Regelung: sensor.verbrauch_aktuell soll gegen 0 laufen (Saldo am Zähler). Stellgröße ist die Ladeleistung.
 # P_soll = max(0, min(P_max, P_Lade - w)); P_Lade = Shelly am Wallbox-Zweig (ESPHome-Entität, Fallback siehe unten).
 # Zielstrom aus P_soll; unter wallbox_min_amps → 0 A (typ. 6 A EVSE-Minimum ≈ 4,14 kW bei 3×230 V).
 # Anzeige-Leistungen: kW (Hauptdashboard); intern sensor.wallbox_pv_rohleistung bleibt in W für die Regel.
