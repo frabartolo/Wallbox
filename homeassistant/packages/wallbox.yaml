@@ -1,12 +1,15 @@
 # Wallbox: PV / Netz → Ladeleistung (W) → Zielstrom (A) → ESPHome set_charging_amps_auto
 #
-# sensor.verbrauch_aktuell (vzlogger chn2): Konvention prüfen. Üblich: positiv = Netzbezug,
-# negativ = Einspeisung. Formel P_soll = max(0, min(P_max, P_Wallbox - w)) nutzt w so:
-# Bei Einspeisung (w < 0) wird P_soll groß; bei Bezug (w > 0) wird P_soll kleiner/0.
+# Nullregelung am Netzanschluss (wie „Bezug (+) / Lieferung (-)“ im Zählerdiagramm):
+# sensor.verbrauch_aktuell muss derselbe Saldo sein: positiv = Bezug aus dem Netz, negativ = Einspeisung.
+# Dann: Soll-Ladeleistung P_soll = max(0, min(P_max, -w)).
+#   Einspeisung (w < 0) → P_soll = |w| (Überschuss in Laden umsetzen, gedeckelt mit P_max).
+#   Bezug (w > 0) → P_soll = 0 (Laden zurücknehmen, bis der Saldo wieder Richtung 0 geht).
+# Die alte Formel „P_Wallbox - w“ mit Shelly am Wallbox-Zweig ist dafür ungeeignet: während des Ladens
+# ist p_wb oft ≈ Ladeleistung; zusammen mit w kann das fälschlich hohe Sollwerte ergeben (z. B. dauerhaft hoher Netzbezug).
 #
 # Anschluss: fest 3×230 V (Drehstrom); Leistung P ≈ 3 · U_phase · I (vereinfacht, I = Außenleiter/Phase).
-# Regelung: sensor.verbrauch_aktuell soll gegen 0 laufen (Saldo am Zähler). Stellgröße ist die Ladeleistung.
-# P_soll = max(0, min(P_max, P_Lade - w)); P_Lade = Shelly am Wallbox-Zweig (ESPHome-Entität, Fallback siehe unten).
+# Stellgröße ist die Ladeleistung; P_max aus wallbox_max_amps × U × 3.
 # Zielstrom aus P_soll: gerundeter Außenleiterstrom, begrenzt auf max_amps. Unter ~0,5 A Rohwert → 0 A (Ruhe).
 # input_number wallbox_min_amps bleibt für Hinweise (z. B. EVSE-Mindestleistung-Sensor), nicht als harte Sperre.
 # Anzeige-Leistungen: kW (Hauptdashboard); intern sensor.wallbox_pv_rohleistung bleibt in W für die Regel.
@@ -60,17 +63,11 @@ template:
         state_class: measurement
         state: >
           {% set w = states('sensor.verbrauch_aktuell') | float(0) %}
-          {% set p1 = states('sensor.wallbox_wallbox_ladeleistung') %}
-          {% if p1 not in ['unknown', 'unavailable', 'none', ''] %}
-            {% set pwb = p1 | float(0) %}
-          {% else %}
-            {% set pwb = states('sensor.wallbox_ladeleistung') | float(0) %}
-          {% endif %}
           {% set u = states('input_number.wallbox_spannung_effektiv') | float(230) %}
           {% set ph = 3 %}
           {% set mx = states('input_number.wallbox_max_amps') | int(32) %}
           {% set p_cap = mx * u * ph %}
-          {{ max(0, min(p_cap, pwb - w)) }}
+          {{ max(0, min(p_cap, -w)) }}
 
       - name: "Wallbox Zielstrom"
         unique_id: wallbox_zielstrom_a
