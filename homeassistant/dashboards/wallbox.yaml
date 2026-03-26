@@ -26,8 +26,9 @@ views:
           Regler übernommen; im manuellen Modus am Slider einstellbar (ESP ca.
           6–22 kW). |
 
-          | **Maximal Laden (kW)** | Rechnerische Obergrenze aus *Maximalstrom ×
-          Spannung × 3 Phasen* (Einstellungen unten). |
+          | **Maximal Laden** | Hier: *Maximalstrom* in **Ampere**
+          (`input_number.wallbox_max_amps`) – derselbe Wert steht unten bei
+          *Grenzen & Spannung*. Leistungsobergrenze ≈ Max-A × Spannung × 3. |
 
           | **Wallbox Soll-Ladestrom (A)** | Sollstrom am Poti/EVSE; entspricht
           der eingestellten Leistung (kW ÷ Spannung ÷ 3). |
@@ -78,4 +79,4 @@ views:
             name: PV-Rohleistung Soll (W)
           - type: divider
           - entity: sensor.wallbox_ist_ladeleistung
-            name: Shelly Scheinleistung Roh (VA, ESP)
+            name: Ist-Ladeleistung kW (Shelly/ESP, HA-Anzeige)
