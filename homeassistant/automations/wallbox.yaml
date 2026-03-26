@@ -18,11 +18,11 @@
         - sensor.wallbox_wallbox_ladeleistung
         # Fallback, falls die ESPHome-Kopie der Shelly-Leistung fehlt / veraltet:
         - sensor.wallbox_ladeleistung
-        - sensor.wallbox_wallbox_modus
+        - select.wallbox_modus
         - input_boolean.wallbox_pv_regelung
   condition:
     - condition: template
-      value_template: "{{ states('sensor.wallbox_wallbox_modus') | float(-1) | int == 0 }}"
+      value_template: "{{ states('select.wallbox_modus') == 'Automatik (nur Überschussladen)' }}"
     - condition: state
       entity_id: input_boolean.wallbox_pv_regelung
       state: "on"

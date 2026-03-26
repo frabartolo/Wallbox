@@ -87,6 +87,16 @@ template:
           {{ [[mn, a, mx] | sort][1] }}
           {% endif %}
 
+      - name: "Wallbox Maximal möglich kW"
+        unique_id: wallbox_max_moeglich_kw
+        unit_of_measurement: kW
+        device_class: power
+        state_class: measurement
+        state: >
+          {% set u = states('input_number.wallbox_spannung_effektiv') | float(230) %}
+          {% set mx = states('input_number.wallbox_max_amps') | int(32) %}
+          {{ (mx * u * 3 / 1000) | round(2) }}
+
       - name: "Wallbox EVSE Mindestleistung"
         unique_id: wallbox_mindestleistung_w
         unit_of_measurement: W
@@ -121,13 +131,14 @@ template:
         state: >
           {% set u = states('input_number.wallbox_spannung_effektiv') | float(230) %}
           {% set ph = 3 %}
-          {% set m = states('sensor.wallbox_wallbox_modus') | float(-1) | int %}
+          {% set mod = states('select.wallbox_modus') %}
+          {% set m = 0 if mod == 'Automatik (nur Überschussladen)' else 1 if mod == 'Maximal Laden jetzt' else 3 if mod == 'Manuelles Laden (Einstellungen)' else -1 %}
           {% if m == 0 and is_state('input_boolean.wallbox_pv_regelung', 'on') %}
             {% set i = states('sensor.wallbox_zielstrom') | float(0) %}
+            {{ ((i * u * ph) / 1000) | round(3) }}
           {% else %}
-            {% set i = states('number.wallbox_wallbox_soll_ladestrom') | float(0) %}
+            {{ states('number.wallbox_eingestellte_ladeleistung_kw') | float(0) | round(3) }}
           {% endif %}
-          {{ ((i * u * ph) / 1000) | round(3) }}
 
       - name: "Wallbox Ist-Ladeleistung"
         unique_id: wallbox_gui_ist_kw

@@ -1,8 +1,6 @@
-# Dashboard „Wallbox“ – nach /config/dashboards/wallbox.yaml kopieren und in configuration.yaml
-# unter lovelace: dashboards: … einbinden (siehe configuration.example.yaml).
-#
-# „Entität nicht gefunden“: Entwicklerwerkzeuge → Zustände → nach „wallbox“ suchen und anpassen.
-# Hauptkarte: Leistungen in kW. ESPHome: sensor.wallbox_wallbox_* oder sensor.wallbox_*.
+# Dashboard „Wallbox“ – nach /config/dashboards/wallbox.yaml kopieren.
+# Entity-IDs: bei doppeltem „wallbox_“-Präfix in HA anpassen (Geräteansicht).
+# ESPHome: select/number/sensor heißen z. B. select.wallbox_modus, number.wallbox_eingestellte_ladeleistung_kw
 
 title: Wallbox
 views:
@@ -10,8 +8,34 @@ views:
     path: main
     icon: mdi:ev-station
     cards:
+      - type: markdown
+        title: Bedeutung der Werte
+        content: |
+          | Name | Bedeutung |
+          |:-----|:----------|
+          | **Modus** | **Automatik:** nur Überschussladen über Home Assistant. **Manuell:** Soll‑Leistung am Slider setzen. **Maximal:** volle Leistung bis EVSE‑Maximum. |
+          | **Aktuelle Ladeleistung kW** | Momentan gemessene Scheinleistung am Wallbox‑Anschluss (Shelly → ESP). |
+          | **Eingestellte Ladeleistung kW** | Soll‑Leistung: in Automatik vom Regler übernommen; im manuellen Modus am Slider einstellbar (ESP ca. 6–22 kW). |
+          | **Maximal Laden (kW)** | Rechnerische Obergrenze aus *Maximalstrom × Spannung × 3 Phasen* (Einstellungen unten). |
+          | **Wallbox Soll-Ladestrom (A)** | Sollstrom am Poti/EVSE; entspricht der eingestellten Leistung (kW ÷ Spannung ÷ 3). |
+
       - type: entities
-        title: PV-Überschussregelung (kW)
+        title: Wallbox (Steuerung & Rückmeldung ESP ↔ HA)
+        show_header_toggle: false
+        entities:
+          - entity: select.wallbox_modus
+            name: Modus
+          - entity: sensor.wallbox_aktuelle_ladeleistung_kw
+            name: Aktuelle Ladeleistung kW
+          - entity: number.wallbox_eingestellte_ladeleistung_kw
+            name: Eingestellte Ladeleistung kW
+          - entity: sensor.wallbox_maximal_moeglich_kw
+            name: Maximal Laden
+          - entity: sensor.wallbox_wallbox_ladestrom
+            name: Wallbox Soll-Ladestrom
+
+      - type: entities
+        title: PV-Überschussregelung (Home Assistant)
         show_header_toggle: false
         entities:
           - entity: input_boolean.wallbox_pv_regelung
@@ -21,20 +45,22 @@ views:
           - entity: sensor.wallbox_ziel_ladeleistung
             name: Ziel-Ladeleistung (Regler)
           - entity: sensor.wallbox_soll_ladeleistung
-            name: Soll-Ladeleistung
+            name: Soll-Ladeleistung (Anzeige)
           - entity: sensor.wallbox_ist_ladeleistung
-            name: Ist-Ladeleistung
+            name: Ist-Ladeleistung (Anzeige)
           - entity: sensor.wallbox_evse_mindestleistung
-            name: Mindestleistung für EVSE-Min. (ca.)
+            name: Mindestleistung EVSE (ca.)
+
       - type: entities
-        title: Grenzen & Spannung (für Regler)
+        title: Grenzen & Spannung
         show_header_toggle: false
         entities:
           - entity: input_number.wallbox_min_amps
           - entity: input_number.wallbox_max_amps
           - entity: input_number.wallbox_spannung_effektiv
+
       - type: entities
-        title: Technik (Debug, Strom & Rohwerte)
+        title: Technik (Debug)
         show_header_toggle: false
         entities:
           - entity: sensor.wallbox_zielstrom
@@ -42,23 +68,5 @@ views:
           - entity: sensor.wallbox_pv_rohleistung
             name: PV-Rohleistung Soll (W)
           - type: divider
-          - entity: number.wallbox_wallbox_soll_ladestrom
-            name: ESP Soll-Ladestrom (A)
-          - entity: sensor.wallbox_wallbox_ladestrom
-            name: ESP Ist-Ladestrom (A)
           - entity: sensor.wallbox_wallbox_ladeleistung
-            name: Shelly Scheinleistung Roh (VA)
-      - type: entities
-        title: Wallbox-Gerät (ESPHome, kW)
-        show_header_toggle: false
-        entities:
-          - entity: sensor.wallbox_wallbox_modus
-            name: Modus (0=Automatik)
-          - entity: sensor.wallbox_sollleistung_kw
-            name: Soll-Leistung (ESP, kW)
-          - entity: sensor.wallbox_ladeleistung_kw
-            name: Ist-Leistung (Shelly, kW)
-          - type: divider
-          - entity: button.wallbox_wallbox_automatikmodus
-          - entity: button.wallbox_wallbox_maximal_laden_jetzt
-          - entity: button.wallbox_wallbox_nur_uberschussladen
+            name: Shelly Scheinleistung Roh (VA, ESP)

@@ -19,17 +19,17 @@ esp8266:
 
 substitutions:
   default_charge_amps: "12"
-  # 3×230 V (Außenleiter): P ≈ 3 · U_phase · I (vereinfacht). Nur für Anzeige kW / Web-UI.
   wallbox_phases: "3"
   wallbox_u_phase_v: "230"
-  # Shelly Pro 3EM: Anzeige bewusst über Scheinleistung (S); passt hier besser zur erwarteten Ladegröße
-  # als reine Wirkleistung (P) – beides in HA prüfbar. Entity-ID ggf. anpassen.
+  # Slider kW (3×230 V, max 32 A ≈ 22,08 kW); Mindeststrom 6 A ≈ 4,14 kW – UI-Min 6 kW gewünscht
+  wallbox_min_slider_kw: "6.0"
+  wallbox_max_slider_kw: "22.08"
+  wallbox_max_amps_hard: "32"
   ha_shelly_scheinleistung_entity: "sensor.shellypro3em_2cbcbba674c0_total_apparent_power"
 
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
-  # Schwächstes akzeptiertes WLAN; bei altem Router ggf. WPA
   min_auth_mode: WPA2
   ap:
     ssid: "Wallbox Fallback Hotspot"
@@ -42,15 +42,16 @@ ota:
   platform: esphome
   password: !secret ota_password
 
-# Lokale Web-Oberfläche (Status, Entitäten, Steuerung im Browser im LAN)
+# Version 3: Reihenfolge über sorting_weight (Modus → Ist → Soll kW → Max → A → Shelly Roh).
+# Bei Speicherproblemen auf dem D1: version: 1 (ohne sorting_weight-Zeilen unter den Entitäten).
 web_server:
   port: 80
+  version: 3
 
 api:
   encryption:
     key: !secret api_encryption
   services:
-    # Manuell / Home Assistant „hart“ setzen → Modus 3 (Override)
     - service: set_charging_amps
       variables:
         amps: int
@@ -58,8 +59,7 @@ api:
         - number.set:
             id: charging_amps_override
             value: !lambda "return amps;"
-        - component.update: wallbox_soll_kw
-    # Nur im Modus Automatik (0): Strom von HA übernehmen, Modus unverändert
+        - component.update: charging_power_kw
     - service: set_charging_amps_auto
       variables:
         amps: int
@@ -78,7 +78,7 @@ api:
             }
         - component.update: charging_amps_override
         - component.update: ds3502_current_amps_sensor
-        - component.update: wallbox_soll_kw
+        - component.update: charging_power_kw
         - component.update: wallbox_lade_kw
 
 i2c:
@@ -92,7 +92,7 @@ ds3502_potentiometer:
   i2c_id: bus_a
   address: 0x28
 
-# wallbox_mode: 0=Automatik (Regelung durch HA), 1=Maximal, 2=Nur Überschuss (Default-Strom), 3=Manuell
+# wallbox_mode: 0=Automatik, 1=Maximal, 2=Legacy Überschuss (wird wie Automatik angezeigt), 3=Manuell
 globals:
   - id: wallbox_mode
     type: int
@@ -103,11 +103,93 @@ globals:
     restore_value: false
     initial_value: "12"
 
-number:
-  # Zeigt immer den eingestellten Soll-Ladestrom (A); Schieben = manuell (Modus 3)
+select:
   - platform: template
-    name: "Wallbox Soll-Ladestrom"
+    name: "Modus"
+    id: wallbox_modus_select
+    optimistic: false
+    update_interval: 1s
+    web_server:
+      sorting_weight: 10
+    options:
+      - "Automatik (nur Überschussladen)"
+      - "Manuelles Laden (Einstellungen)"
+      - "Maximal Laden jetzt"
+    lambda: |-
+      switch (id(wallbox_mode)) {
+        case 0:
+          return std::string("Automatik (nur Überschussladen)");
+        case 1:
+          return std::string("Maximal Laden jetzt");
+        case 2:
+          return std::string("Automatik (nur Überschussladen)");
+        case 3:
+          return std::string("Manuelles Laden (Einstellungen)");
+        default:
+          return std::string("Automatik (nur Überschussladen)");
+      }
+    set_action:
+      - lambda: |-
+          std::string opt = x;
+          if (opt == "Automatik (nur Überschussladen)") {
+            id(wallbox_mode) = 0;
+          } else if (opt == "Manuelles Laden (Einstellungen)") {
+            id(wallbox_mode) = 3;
+          } else if (opt == "Maximal Laden jetzt") {
+            id(wallbox_mode) = 1;
+            id(current_amps_setting) = int(${wallbox_max_amps_hard});
+            id(ds3502_output).set_level((float) id(current_amps_setting) / 64.0f);
+          }
+      - component.update: charging_amps_override
+      - component.update: ds3502_current_amps_sensor
+      - component.update: charging_power_kw
+      - component.update: wallbox_lade_kw
+
+number:
+  # Hauptregler kW: in Automatik nur Anzeige (Eingriff wird verworfen und zurückgesetzt)
+  - platform: template
+    name: "Eingestellte Ladeleistung kW"
+    id: charging_power_kw
+    min_value: ${wallbox_min_slider_kw}
+    max_value: ${wallbox_max_slider_kw}
+    step: 0.1
+    unit_of_measurement: "kW"
+    web_server:
+      sorting_weight: 30
+    lambda: |-
+      return (float) id(current_amps_setting) * float(${wallbox_u_phase_v}) * float(${wallbox_phases}) / 1000.0f;
+    set_action:
+      - lambda: |-
+          const float u = float(${wallbox_u_phase_v});
+          const float ph = float(${wallbox_phases});
+          const float max_kw = float(${wallbox_max_slider_kw});
+          if (id(wallbox_mode) != 3) {
+            id(charging_power_kw).publish_state((float) id(current_amps_setting) * u * ph / 1000.0f);
+            return;
+          }
+          float kw = x;
+          if (kw < float(${wallbox_min_slider_kw}))
+            kw = float(${wallbox_min_slider_kw});
+          if (kw > max_kw)
+            kw = max_kw;
+          int amps = (int) lroundf(kw * 1000.0f / (u * ph));
+          if (amps < 6)
+            amps = 6;
+          if (amps > int(${wallbox_max_amps_hard}))
+            amps = int(${wallbox_max_amps_hard});
+          id(current_amps_setting) = amps;
+          id(wallbox_mode) = 3;
+          id(ds3502_output).set_level((float) amps / 64.0f);
+      - component.update: charging_amps_override
+      - component.update: ds3502_current_amps_sensor
+      - component.update: charging_power_kw
+      - component.update: wallbox_lade_kw
+
+  # Nur für esphome.set_charging_amps / API; nicht in der Web-Tabelle (internal)
+  - platform: template
+    name: "Soll-Ladestrom A (intern)"
     id: charging_amps_override
+    internal: true
     min_value: 0
     max_value: 64
     step: 1
@@ -123,7 +205,8 @@ number:
           id(ds3502_output).set_level((float) amps / 64.0f);
       - component.update: charging_amps_override
       - component.update: ds3502_current_amps_sensor
-      - component.update: wallbox_soll_kw
+      - component.update: charging_power_kw
+      - component.update: wallbox_lade_kw
 
 output:
   - platform: template
@@ -142,16 +225,6 @@ output:
           }
 
 sensor:
-  # Tatsächlich eingestellter Ladestrom (entspricht Soll am Poti / EVSE-Vorgabe)
-  - platform: template
-    name: "Wallbox Ladestrom"
-    id: ds3502_current_amps_sensor
-    unit_of_measurement: "A"
-    accuracy_decimals: 0
-    lambda: |-
-      return (float) id(current_amps_setting);
-
-  # Messwert aus Home Assistant (Shelly Pro 3EM Scheinleistung am Wallbox-Anschluss)
   - platform: homeassistant
     name: "Wallbox Ladeleistung"
     id: wallbox_power_shelly
@@ -159,107 +232,39 @@ sensor:
     accuracy_decimals: 0
 
   - platform: template
-    name: "Wallbox Modus"
-    id: wallbox_mode_sensor
-    accuracy_decimals: 0
-    lambda: |-
-      return id(wallbox_mode);
-
-  # Anzeige kW (3×230 V): I · 3 · U / 1000
-  - platform: template
-    name: "Sollleistung kW"
-    id: wallbox_soll_kw
-    unit_of_measurement: "kW"
-    accuracy_decimals: 2
-    update_interval: 1s
-    lambda: |-
-      return (float) id(current_amps_setting) * float(${wallbox_u_phase_v}) * float(${wallbox_phases}) / 1000.0f;
-
-  - platform: template
-    name: "Ladeleistung kW"
+    name: "Aktuelle Ladeleistung kW"
     id: wallbox_lade_kw
     unit_of_measurement: "kW"
+    device_class: power
     accuracy_decimals: 2
     update_interval: 1s
+    web_server:
+      sorting_weight: 20
     lambda: |-
       float s = id(wallbox_power_shelly).state;
       if (isnan(s)) return 0.0f;
       return s / 1000.0f;
 
-# Lesbare Modus-Anzeige + drei „aktiv“-Indikatoren (Web-UI: Buttons haben keinen Zustand)
-text_sensor:
   - platform: template
-    name: "Betriebsart"
-    id: wallbox_betriebsart_text
-    update_interval: 1s
+    name: "Maximal Laden"
+    id: max_charge_kw_display
+    unit_of_measurement: "kW"
+    device_class: power
+    accuracy_decimals: 2
+    web_server:
+      sorting_weight: 40
     lambda: |-
-      switch (id(wallbox_mode)) {
-        case 0:
-          return std::string("Automatik (Regelung Home Assistant)");
-        case 1:
-          return std::string("Maximal laden");
-        case 2:
-          return std::string("Nur Überschussladen");
-        case 3:
-          return std::string("Manuell (Soll-Ladestrom)");
-        default:
-          return std::string("?");
-      }
-
-binary_sensor:
-  # Lambda wird in loop() laufend ausgewertet (kein PollingComponent → kein component.update)
-  - platform: template
-    name: "Status Automatikmodus"
-    id: status_mode_auto
-    device_class: running
-    lambda: |-
-      return id(wallbox_mode) == 0;
-  - platform: template
-    name: "Status Maximal laden"
-    id: status_mode_max
-    device_class: running
-    lambda: |-
-      return id(wallbox_mode) == 1;
-  - platform: template
-    name: "Status Nur Überschussladen"
-    id: status_mode_surplus
-    device_class: running
-    lambda: |-
-      return id(wallbox_mode) == 2;
-
-button:
-  - platform: template
-    name: "Maximal Laden jetzt"
-    id: charge_max_button
-    on_press:
-      - lambda: |-
-          id(wallbox_mode) = 1;
-          id(current_amps_setting) = 32;
-          id(ds3502_output).set_level((float) id(current_amps_setting) / 64.0f);
-      - component.update: charging_amps_override
-      - component.update: ds3502_current_amps_sensor
-      - component.update: wallbox_soll_kw
+      return float(${wallbox_max_slider_kw});
 
   - platform: template
-    name: "Nur Überschussladen"
-    id: charge_surplus_button
-    on_press:
-      - lambda: |-
-          id(wallbox_mode) = 2;
-          id(current_amps_setting) = ${default_charge_amps};
-          id(ds3502_output).set_level((float) id(current_amps_setting) / 64.0f);
-      - component.update: charging_amps_override
-      - component.update: ds3502_current_amps_sensor
-      - component.update: wallbox_soll_kw
-
-  - platform: template
-    name: "Automatikmodus"
-    on_press:
-      - lambda: |-
-          id(wallbox_mode) = 0;
-      - component.update: wallbox_mode_sensor
-      - component.update: charging_amps_override
-      - component.update: ds3502_current_amps_sensor
+    name: "Wallbox Ladestrom"
+    id: ds3502_current_amps_sensor
+    unit_of_measurement: "A"
+    accuracy_decimals: 0
+    web_server:
+      sorting_weight: 50
+    lambda: |-
+      return (float) id(current_amps_setting);
 
 time:
   - platform: sntp
